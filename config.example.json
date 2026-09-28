@@ -1,0 +1,19 @@
+{
+  "bed_polygon": [[80, 160], [500, 160], [500, 430], [80, 430]],
+  "sample_fps": 3.0,
+  "bed_region_mode": "auto",
+  "bed_model": "yolo11n-seg.pt",
+  "detector": "yolo_pose",
+  "yolo_model": "yolo11n-pose.pt",
+  "device": "cpu",
+  "keypoint_confidence": 0.5,
+  "min_detection_confidence": 0.35,
+  "state_hold_sec": 1.5,
+  "posture_hold_sec": 0.6,
+  "event_hold_sec": 1.5,
+  "context_gap_sec": 2.0,
+  "sitting_monitor_sec": 120.0,
+  "min_state_confidence": 0.35,
+  "walking_speed_px_sec": 35.0,
+  "alert_after_out_of_bed_sec": 300.0
+}
