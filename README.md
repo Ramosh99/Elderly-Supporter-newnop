@@ -37,6 +37,10 @@ elderly_monitor/
   video/
     reader.py           Metadata, frame sampling and segment access
     annotations.py      Overlay drawing and annotated video writing
+  review/
+    agent.py            Chooses context windows and enforces review budgets
+    evidence.py         Collects extra frames with conservative identity matching
+    gemini.py           Optional Gemini visual review and validated responses
 tests/                  Regression tests
 tools/                  Manual bed-region selector
 monitor.py              CLI entry point
@@ -45,8 +49,7 @@ monitor.py              CLI entry point
 Imports now use the package locations, for example
 `from elderly_monitor.temporal.tracker import TemporalStateTracker` and
 `from elderly_monitor.config import load_config`. The CLI commands and JSON format
-remain unchanged. Review-agent and evaluation modules will be added when implemented;
-there are no placeholder packages for them yet.
+remain unchanged. The review agent is implemented; evaluation modules remain future work.
 
 ## Run
 
@@ -109,8 +112,8 @@ classifier. Hidden legs or uncertain torso joints can produce UNKNOWN. Annotated
 shows the skeleton, target ID, raw candidate state and reason; JSON timeline states are
 temporally smoothed. Use `--include-observations` for joint coordinates and reasons.
 
-Bed calibration now supports automatic segmentation and manual polygons. Optional VLM
-review is not implemented. Person detection uses only `yolo_pose`; the old HOG,
+Bed calibration supports automatic segmentation and manual polygons. Optional Gemini VLM
+review is available. Person detection uses only `yolo_pose`; the old HOG,
 background-subtraction and box-shape classification paths have been removed.
 Geometry and temporal rules remain necessary to convert model outputs into activity
 states, bed-exit events and duration summaries. OpenCV handles video I/O, masks,
@@ -167,9 +170,85 @@ beside the bed. Events use spatial evidence, while the activity timeline uses po
 smoothing, so their boundaries need not exactly coincide. These are configurable
 demonstration policies; prolonged sitting is not a measured clinical risk or edge detector.
 
-This is deterministic temporal context review, not a VLM agent that requests new video
-segments. Actual activity accuracy, event precision/recall and duration errors still need
+An agentic review controller now requests additional video frames around uncertain
+observations and activity transitions. It uses deterministic decisions, not a VLM.
+Actual activity accuracy, event precision/recall and duration errors still need
 manually labelled clips. Synthetic regression tests do not substitute for that evaluation.
+
+## Agentic evidence review
+
+`review/agent.py` plans nonoverlapping context windows; `review/evidence.py` reads extra
+frames and runs a separate pose model without rewinding the first-pass ByteTrack instance.
+The pipeline merges new timestamps and rebuilds the temporal summary. Original observations
+are retained, including UNKNOWN: extra frames add evidence rather than overriding it.
+
+Review defaults: enabled, 2 seconds of context on each side, 9 requested FPS, at most
+3 windows and 120 extra frame attempts, one attempt per window. Set `review_enabled`
+to false for the original single pass. Sampling is limited by source FPS. Windows are
+processed chronologically, so a limited budget can leave later cases unreviewed.
+
+Identity is checked against interpolated boxes from two nearby first-pass detections
+with the same target ID (maximum gap 1 second). Review requires exactly one overlapping
+person detection. Missing anchors are skipped; ambiguous matches produce UNKNOWN.
+This is conservative geometric association, not appearance re-identification, and cannot
+guarantee identity during caregiver overlap or recover a long-lost target.
+
+`agentic_review` logs triggers, windows, attempts, identity rejections and before/after
+unknown time, event counts and decisions. More evidence may increase uncertainty; the
+controller does not force a known label. `observations`, when requested, includes added
+samples. The annotated video still shows first-pass candidate predictions, while the
+JSON timeline includes review evidence (`analysis.annotation_evidence` makes this explicit).
+
+## Optional Gemini reviewer
+
+Set `gemini_enabled` to true in your configuration. Put your key in the project-root
+`.env` file (copy `.env.example` if needed):
+
+```dotenv
+GEMINI_API_KEY=your-api-key
+```
+
+Then run:
+
+```powershell
+python monitor.py videos\japan_cctv.mp4 --config config.json --output output\result.json --include-observations
+```
+
+Create a key in Google AI Studio: https://aistudio.google.com/apikey . Do not store it in
+config.json, source files or commits. The CLI automatically loads `GEMINI_API_KEY` from
+the project-root `.env`, regardless of the working directory. Existing shell variables
+take precedence. Blank values and comments are ignored; single/double quoted keys are
+supported. The loader only reads this key, with no variable expansion or shell execution.
+Library callers can explicitly call `elderly_monitor.environment.load_project_env()`.
+`.env` is ignored by Git; only the blank `.env.example` template is shareable.
+The client uses the standard-library HTTPS API; no extra SDK installation is needed.
+
+The current project config enables Gemini; the example config leaves cloud review off.
+Without a key, review is skipped and `gemini_review.status` explains why. The default
+model is `gemini-3.1-flash-lite`; `gemini_model` can select another compatible vision model.
+Model availability depends on your API account. Request format follows Google's
+GenerateContent API: https://ai.google.dev/api/generate-content .
+
+At most 3 requests are sent per recording, with up to 5 JPEG frames each, resized to a
+maximum dimension of 768 pixels. Frames include the green target box and blue approximate
+bed boundary, timestamps and the review instruction. These images leave your computer
+and are processed by Google; applicable billing and data-use terms depend on your tier.
+Timeout is 30 seconds per request, output is capped at 2048 tokens, and there are no
+automatic retries. Configuration permits at most 10 requests and 8 images per request.
+
+Responses must contain one valid state, confidence, identity-clarity flag and visual
+explanation per supplied frame. Only previously UNKNOWN posture observations with an
+existing target ID, box and bed polygon may be updated. Bed-related labels must agree
+with the existing spatial relation. Known labels are advisory-only; identity and bed
+detection failures remain unresolved. Model confidence is a self-report, not calibrated
+accuracy. Validated updates go through the temporal tracker; Gemini cannot directly
+create events or alerts. Missing keys, timeouts, rejected/invalid responses and API errors
+preserve the local analysis. No key or encoded image is written into results.
+
+`gemini_review` records per-frame assessments, accepted updates, errors by type and token
+usage. The annotated video still displays first-pass candidates; the JSON includes
+accepted Gemini evidence. The integration is tested with mocked API responses; a live
+call and labelled evaluation are still needed before claiming an accuracy improvement.
 
 The supplied `Supine-to-Sit.mp4` contains an overlapping caregiver and patient. In the
 initial YOLO run, the pose mixes joints from both people and then loses the target.

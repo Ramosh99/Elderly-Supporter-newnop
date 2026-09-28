@@ -12,6 +12,9 @@ from .vision.bed_detector import detect_bed_region, detect_bed_frame
 from .temporal.tracker import TemporalStateTracker
 from .video.reader import VideoReader
 from .video.annotations import AnnotatedVideoWriter
+from .review.agent import ReviewAgent
+from .review.evidence import VideoEvidence
+from .review.gemini import review_with_gemini
 
 
 def _build_detector(config):
@@ -85,12 +88,40 @@ def analyze_video(video_path: Path, config: dict, include_observations: bool = F
                 last_timestamp = timestamp
                 writer.write(frame, observation)
 
-    result = tracker.finish(reader.duration or last_timestamp)
+    duration = reader.duration or last_timestamp
+    initial_result = tracker.finish(duration)
+    base_count = len(observations)
+    review_log = {'enabled': False, 'windows': []}
+    if config['review_enabled']:
+        observations, review_log = ReviewAgent(config).run(
+            observations, duration, VideoEvidence(video_path, config, observations))
+        tracker = _build_tracker(config, reader)
+        for observation in observations:
+            tracker.update(observation)
+    observations, gemini_log = review_with_gemini(video_path, observations, duration, config)
+    tracker = _build_tracker(config, reader)
+    for observation in observations:
+        tracker.update(observation)
+    result = tracker.finish(duration)
+    result['gemini_review'] = gemini_log
+    review_log['before'] = {k: initial_result[k] for k in ('total_unknown_sec','bed_exit_count','bed_return_count','decision')}
+    review_log['after'] = {k: result[k] for k in ('total_unknown_sec','bed_exit_count','bed_return_count','decision')}
+    for window in review_log['windows']:
+        for label, summary in (('before', initial_result), ('after', result)):
+            window[label + '_unknown_sec'] = round(sum(
+                max(0.0, min(s['end_sec'], window['end_sec']) - max(s['start_sec'], window['start_sec']))
+                for s in summary['timeline'] if s['state'] == 'UNKNOWN'), 3)
+        window['conclusion'] = ('uncertainty_reduced' if window['after_unknown_sec'] < window['before_unknown_sec']
+                                else 'uncertainty_increased' if window['after_unknown_sec'] > window['before_unknown_sec']
+                                else 'uncertainty_unchanged')
+    result['agentic_review'] = review_log
     result["video"] = str(video_path)
     result["analysis"] = {
         "source_fps": round(reader.source_fps, 3),
         "sample_fps": float(config["sample_fps"]),
         "sampled_frame_count": len(observations),
+        "initial_sampled_frame_count": base_count,
+        "annotation_evidence": "first_pass_candidates",
         "detector": detector_name, "bed_region": bed_details,
         "target_track_id": getattr(detector, "target_track_id", None),
         "known_observation_fraction": round(sum(o.state != State.UNKNOWN for o in observations) / max(1, len(observations)), 3),
