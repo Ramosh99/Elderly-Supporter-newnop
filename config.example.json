@@ -2,6 +2,7 @@
   "bed_polygon": [[80, 160], [500, 160], [500, 430], [80, 430]],
   "sample_fps": 3.0,
   "bed_region_mode": "auto",
+  "refresh_bed_each_sample": false,
   "bed_model": "yolo11n-seg.pt",
   "detector": "yolo_pose",
   "yolo_model": "yolo11n-pose.pt",

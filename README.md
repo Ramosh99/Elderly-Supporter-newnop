@@ -63,10 +63,12 @@ python monitor.py path\to\video.mp4 --config config.json --output output\result.
 With `bed_region_mode: "auto"`, YOLO segmentation (`yolo11n-seg.pt`) samples five
 frames from the first four seconds, checks mask agreement, and uses a detected bed
 polygon for that video. The model downloads on first use. Automatic mode refreshes the
-region at each sampled frame by default (`refresh_bed_each_sample: true`). Missing or
-ambiguous beds produce UNKNOWN rather than using a stale region. This helps with
-changing framing but is not camera stabilization: camera movement can still distort
-walking-speed estimates and person tracking. Manual regions remain fixed.
+region once and keeps it fixed by default (`refresh_bed_each_sample: false`). This
+prevents a standing person obscuring the bed from invalidating the calibrated region.
+The camera and bed must stay fixed. Set `refresh_bed_each_sample: true` to opt into
+re-detection; in that mode missing or ambiguous beds produce UNKNOWN. Re-detection
+is not camera stabilization: camera movement can still distort walking-speed estimates
+and person tracking. Manual regions remain fixed.
 
 The occupancy polygon is a convex envelope around the segmented bed, bridging gaps
 where the person hides it. This preserves angled edges but can include nearby floor,

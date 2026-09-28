@@ -6,7 +6,7 @@ from pathlib import Path
 
 DEFAULTS = {
     "sample_fps": 3.0, "bed_region_mode": "manual",
-    "refresh_bed_each_sample": True, "bed_model": "yolo11n-seg.pt",
+    "refresh_bed_each_sample": False, "bed_model": "yolo11n-seg.pt",
     "bed_confidence": 0.35, "detector": "yolo_pose",
     "yolo_model": "yolo11n-pose.pt", "device": "cpu",
     "min_detection_confidence": 0.35, "keypoint_confidence": 0.5,
