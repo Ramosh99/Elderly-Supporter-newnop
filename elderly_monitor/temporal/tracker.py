@@ -3,10 +3,11 @@ from __future__ import annotations
 import math
 from dataclasses import replace
 
-from .models import Event, Observation, State, TimelineSegment
+from ..models import Observation, State, TimelineSegment
+from .events import detect_events
+from .alerts import decide_alert
 
-IN_BED = {State.LYING_IN_BED, State.SITTING_ON_BED}
-OUT_OF_BED = {State.STANDING, State.WALKING, State.SITTING_OUTSIDE_BED, State.OUT_OF_BED}
+from .states import IN_BED, OUT_OF_BED
 
 
 class TemporalStateTracker:
@@ -99,60 +100,12 @@ class TemporalStateTracker:
                 segments.append(TimelineSegment(start, stop, state, avg))
         return segments
 
-    def _events(self, intervals):
-        events, reviews = [], []
-        baseline = None
-        baseline_state = State.UNKNOWN
-        candidate = None
-        candidate_start = 0.0
-        confidences = []
-        unknown_start = None
-        identity = None
-        for o, stop in intervals:
-            if o.track_id is not None and identity is not None and o.track_id != identity:
-                baseline, candidate = None, None
-                reviews.append({"time_sec": o.timestamp_sec, "reason": "target_identity_changed"})
-            if o.track_id is not None:
-                identity = o.track_id
-            if o.state == State.UNKNOWN:
-                candidate = None
-                unknown_start = o.timestamp_sec if unknown_start is None else unknown_start
-                if stop - unknown_start >= self.context_gap_sec:
-                    baseline = None
-                continue
-            unknown_start = None
-            location = "in" if o.state in IN_BED else "away" if o.bed_relation == "away" else None
-            if location is None:
-                if candidate is not None:
-                    reviews.append({"time_sec": o.timestamp_sec, "reason": "insufficient_spatial_evidence"})
-                candidate = None
-                continue
-            if location == baseline:
-                baseline_state = o.state
-                candidate = None
-                continue
-            if candidate != location:
-                candidate, candidate_start, confidences = location, o.timestamp_sec, []
-            confidences.append(o.confidence)
-            required = self.posture_hold_sec if baseline is None and location == "in" else self.event_hold_sec
-            if stop-candidate_start + 1e-9 < required:
-                continue
-            confirmed = candidate_start + required
-            if baseline is not None:
-                event_name = "bed_exit" if location == "away" else "return_to_bed"
-                events.append(Event(event_name, candidate_start, confirmed, baseline_state,
-                                    o.state, min(confidences), "MONITOR" if location == "away" else "NORMAL"))
-                reviews.append({"time_sec": confirmed, "reason": "sustained_" + location,
-                                "evidence_start_sec": candidate_start, "event": event_name})
-            baseline, baseline_state, candidate = location, o.state, None
-        return events, reviews
-
     def finish(self, end_sec):
         if not math.isfinite(end_sec) or end_sec < 0 or (self.observations and end_sec < self.observations[-1].timestamp_sec):
             raise ValueError("Video end must be finite and at or after the last observation")
         intervals = self._intervals(end_sec)
         segments = self._timeline(intervals)
-        events, reviews = self._events(intervals)
+        events, reviews = detect_events(intervals, self.posture_hold_sec, self.event_hold_sec, self.context_gap_sec)
         durations = {s.value.lower(): 0.0 for s in State}
         for segment in segments:
             durations[segment.state.value.lower()] += segment.duration_sec
@@ -170,19 +123,9 @@ class TemporalStateTracker:
             away_identity = o.track_id
             running_away = running_away + stop-o.timestamp_sec if o.state in OUT_OF_BED and o.bed_relation == "away" else 0.0
             longest_away = max(longest_away, running_away)
-        reasons = []
-        decision = "NORMAL"
-        if durations["unknown"] > 0 or not intervals:
-            reasons.append("uncertain_or_missing_observations")
-        if longest_sitting >= self.sitting_monitor_sec:
-            reasons.append("prolonged_sitting_on_bed")
-        if events and events[-1].event == "bed_exit":
-            reasons.append("bed_exit_without_confirmed_return")
-        if reasons:
-            decision = "MONITOR"
-        if longest_away >= self.alert_after_sec:
-            decision = "ALERT"
-            reasons.append("prolonged_confirmed_absence_from_bed")
+        decision, reasons = decide_alert(
+            durations["unknown"] > 0 or not intervals, longest_sitting, longest_away,
+            events, self.sitting_monitor_sec, self.alert_after_sec)
         return {
             "observation_duration_sec": round(end_sec, 3),
             "activity_duration_sec": {k: round(v, 3) for k,v in durations.items()},

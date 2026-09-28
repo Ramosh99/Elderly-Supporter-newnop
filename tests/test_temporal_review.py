@@ -1,7 +1,7 @@
 import unittest
 
 from elderly_monitor.models import Observation, State
-from elderly_monitor.tracker import TemporalStateTracker
+from elderly_monitor.temporal.tracker import TemporalStateTracker
 
 
 class TemporalReviewTests(unittest.TestCase):

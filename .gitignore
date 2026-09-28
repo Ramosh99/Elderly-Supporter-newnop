@@ -6,3 +6,4 @@ output/
 .pytest_cache/
 *.pt
 Ultralytics/
+tmp/

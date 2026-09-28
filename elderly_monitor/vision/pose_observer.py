@@ -3,7 +3,7 @@ from __future__ import annotations
 import math
 
 from .geometry import bbox_bed_overlap, distance, point_in_polygon, distance_to_polygon
-from .models import Observation, State
+from ..models import Observation, State
 
 
 class PoseActivityObserver:

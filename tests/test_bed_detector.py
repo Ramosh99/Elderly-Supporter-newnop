@@ -5,9 +5,9 @@ from unittest.mock import MagicMock, patch
 
 import numpy as np
 
-from elderly_monitor.bed_detector import detect_bed_region, occupancy_polygon, detect_bed_frame
-from elderly_monitor.geometry import point_in_polygon
-from elderly_monitor.pose_observer import PoseActivityObserver
+from elderly_monitor.vision.bed_detector import detect_bed_region, occupancy_polygon, detect_bed_frame
+from elderly_monitor.vision.geometry import point_in_polygon
+from elderly_monitor.vision.pose_observer import PoseActivityObserver
 from elderly_monitor.models import State
 from elderly_monitor.pipeline import analyze_video
 

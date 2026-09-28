@@ -4,7 +4,8 @@ import argparse
 import json
 from pathlib import Path
 
-from elderly_monitor.pipeline import analyze_video, load_config
+from elderly_monitor.pipeline import analyze_video
+from elderly_monitor.config import load_config
 
 
 def main() -> None:

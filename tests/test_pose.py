@@ -1,9 +1,9 @@
 import unittest
 
 from elderly_monitor.models import Observation, State
-from elderly_monitor.pose_detector import YoloPoseDetector
-from elderly_monitor.pose_observer import PoseActivityObserver
-from elderly_monitor.tracker import TemporalStateTracker
+from elderly_monitor.vision.pose_detector import YoloPoseDetector
+from elderly_monitor.vision.pose_observer import PoseActivityObserver
+from elderly_monitor.temporal.tracker import TemporalStateTracker
 
 
 class PoseTests(unittest.TestCase):

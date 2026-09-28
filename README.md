@@ -17,6 +17,37 @@ flowchart LR
     T --> R[Timeline, durations, alert decision]
 ```
 
+## Code structure
+
+```text
+elderly_monitor/
+  config.py             Application settings, defaults and loading
+  models.py             Shared observations, states, segments and events
+  pipeline.py           Coordinates analysis
+  vision/
+    bed_detector.py     YOLO bed segmentation and occupancy boundary
+    pose_detector.py    YOLO Pose and ByteTrack identity selection
+    pose_observer.py    Pose and bed geometry to activity evidence
+    geometry.py         Polygon and distance calculations
+  temporal/
+    tracker.py          Temporal smoothing, durations and summary assembly
+    events.py           Spatial bed-exit and return confirmation
+    alerts.py           Recording-level decisions and reasons
+    states.py           Shared in-bed/out-of-bed state groups
+  video/
+    reader.py           Metadata, frame sampling and segment access
+    annotations.py      Overlay drawing and annotated video writing
+tests/                  Regression tests
+tools/                  Manual bed-region selector
+monitor.py              CLI entry point
+```
+
+Imports now use the package locations, for example
+`from elderly_monitor.temporal.tracker import TemporalStateTracker` and
+`from elderly_monitor.config import load_config`. The CLI commands and JSON format
+remain unchanged. Review-agent and evaluation modules will be added when implemented;
+there are no placeholder packages for them yet.
+
 ## Run
 
 Requires Python 3.10 or newer.
