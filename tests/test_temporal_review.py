@@ -18,10 +18,11 @@ class TemporalReviewTests(unittest.TestCase):
         self.assertEqual(result['activity_duration_sec']['sitting_on_bed'],1)
         self.assertEqual(result['bed_exit_count'],0)
 
-    def test_standing_beside_bed_is_not_exit(self):
+    def test_sustained_standing_beside_bed_is_exit(self):
         samples = [(0,State.LYING_IN_BED,'inside')]+[(t,State.STANDING,'near') for t in range(1,5)]+[(5,State.SITTING_ON_BED,'inside')]
         _, result = self.run_clip(samples,6,alert_after_sec=2)
-        self.assertEqual(result['bed_exit_count'],0)
+        self.assertEqual(result['bed_exit_count'],1)
+        self.assertEqual(result['events'][0]['start_time_sec'],1)
         self.assertNotEqual(result['decision'],'ALERT')
 
     def test_brief_away_then_back_does_not_confirm_exit(self):
@@ -35,8 +36,8 @@ class TemporalReviewTests(unittest.TestCase):
                              (4,State.SITTING_ON_BED,'inside'),(5,State.LYING_IN_BED,'inside')],6)
         self.assertEqual(r['bed_exit_count'],1)
         self.assertEqual(r['bed_return_count'],1)
-        self.assertEqual(r['events'][0]['start_time_sec'],2)
-        self.assertEqual(r['events'][0]['confirmed_time_sec'],3.5)
+        self.assertEqual(r['events'][0]['start_time_sec'],1)
+        self.assertEqual(r['events'][0]['confirmed_time_sec'],2.5)
         self.assertEqual(r['events'][1]['start_time_sec'],4)
 
     def test_long_occlusion_resets_event_context(self):

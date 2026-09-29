@@ -1,0 +1,49 @@
+{
+  "video": "videos\\japan_cctv.mp4",
+  "observation_duration_sec": 10.0,
+  "reviewed": true,
+  "annotation_notes": "Standing beside bed is an exit under the support-based draft definition, even without walking away. Rise and descent transitions require human adjudication. Embedded clock appears discontinuous; use video playback time.",
+  "timeline": [
+    {
+      "start_sec": 0,
+      "end_sec": 0.625,
+      "state": "LYING_IN_BED"
+    },
+    {
+      "start_sec": 0.625,
+      "end_sec": 2.875,
+      "state": "SITTING_ON_BED" 
+    },
+    {
+      "start_sec": 2.875,
+      "end_sec": 8.125,
+      "state": "STANDING"
+    },
+    {
+      "start_sec": 8.125,
+      "end_sec": 9.125,
+      "state": "SITTING_ON_BED"
+    },
+    {
+      "start_sec": 9.125,
+      "end_sec": 10.0,
+      "state": "LYING_IN_BED"
+    }
+  ],
+  "events": [
+    {
+      "event": "bed_exit",
+      "start_time_sec": 2.875
+    },
+    {
+      "event": "return_to_bed",
+      "start_time_sec": 8.125
+    }
+  ],
+  "annotation_status": "ai_visual_draft_completed",
+  "annotator": "Codex visual inspection of original-video contact sheets",
+  "human_reviewed": true,
+  "review_method": "20 overview frames per clip; additional 0.25s or 0.5s samples around selected transitions. Not exhaustive frame-by-frame playback.",
+  "boundary_uncertainty_sec": 0.5,
+  "event_definition": "Draft support-based definition: exit when pelvis leaves bed support during a completed rise; return when seated/lying support is re-established. Human must reconcile this with assignment event policy; proximity alone does not suppress exit."
+}

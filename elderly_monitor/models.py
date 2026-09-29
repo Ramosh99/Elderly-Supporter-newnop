@@ -28,6 +28,10 @@ class Observation:
     reason: str = "unspecified"
     bed_polygon: list[list[int]] | None = None
     bed_relation: str = "unknown"
+    detector_confidence: float | None = None
+    mattress_polygon: list[list[int]] | None = None
+    support_evidence: str = "uncalibrated"
+    motion_evidence: dict | None = None
 
     def to_dict(self) -> dict[str, Any]:
         result = asdict(self)

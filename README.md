@@ -19,6 +19,13 @@ flowchart LR
 
 ## Code structure
 
+For per-camera mattress-top/floor calibration and the unified extra-frame motion
+history, see [surface calibration](evaluation/surface_calibration.md).
+The default Gemini policy now uses bracketed sequence corrections, a fragmentation
+check, bounded retries and response caching. See [review reliability](evaluation/review_reliability.md)
+for configuration, limitations and replay results; older point-correction details
+below describe the optional `gemini_correction_policy: legacy` mode.
+
 ```text
 elderly_monitor/
   config.py             Application settings, defaults and loading
@@ -42,6 +49,7 @@ elderly_monitor/
     evidence.py         Collects extra frames with conservative identity matching
     gemini.py           Optional Gemini visual review and validated responses
 tests/                  Regression tests
+evaluation/             Ground-truth templates and comparison metrics
 tools/                  Manual bed-region selector
 monitor.py              CLI entry point
 ```
@@ -49,7 +57,9 @@ monitor.py              CLI entry point
 Imports now use the package locations, for example
 `from elderly_monitor.temporal.tracker import TemporalStateTracker` and
 `from elderly_monitor.config import load_config`. The CLI commands and JSON format
-remain unchanged. The review agent is implemented; evaluation modules remain future work.
+remain unchanged. For activity accuracy, duration errors and event precision/recall,
+follow the [evaluation workflow](evaluation/README.md). Label templates must be
+manually completed before calculating real accuracy.
 
 ## Run
 
@@ -148,12 +158,13 @@ When standing/walking labels flicker but sustained spatial evidence confirms the
 is away, short detailed activity runs become the broader OUT_OF_BED state rather than
 discarding the known location.
 
-Bed exits require a known in-bed baseline followed by sustained `bed_relation: away`.
-Hip distance from the bed boundary is compared with 20% of torso length (minimum 5 px).
-Standing near the bed alone does not confirm an exit. Changes between standing and
-walking do not restart the spatial evidence window. A return requires sustained in-bed
-evidence and starts at the return time, not the preceding exit. Initial absence can
-establish an away baseline but does not invent an exit before the video began.
+Bed exits require a known in-bed baseline followed by sustained standing, walking,
+sitting outside the bed or OUT_OF_BED, with known bed geometry. Standing beside the
+bed counts as loss of bed support; moving farther away is not required. The default
+confirmation hold is 1.5 seconds, so a brief stand-and-sit does not confirm an exit.
+Changes between standing and walking do not restart the evidence window. Returns
+require sustained sitting/lying on the bed. Initial absence establishes a baseline
+without inventing an exit before the video began.
 Short UNKNOWN gaps retain the baseline but reset candidate evidence; long gaps and
 target ID changes discard the baseline. UNKNOWN never contributes to confirmed absence.
 
@@ -166,7 +177,7 @@ Summary decisions describe the whole recording, not a live notification:
 `decision_reasons` explains the outcome. `temporal_reviews` records event confirmations
 and context decisions. `longest_confirmed_away_sec` is spatially verified absence;
 `longest_out_of_bed_period_sec` is based on activity labels and may include standing
-beside the bed. Events use spatial evidence, while the activity timeline uses posture
+beside the bed. Events use sustained posture with known bed context, while the activity timeline uses posture
 smoothing, so their boundaries need not exactly coincide. These are configurable
 demonstration policies; prolonged sitting is not a measured clinical risk or edge detector.
 
@@ -237,16 +248,26 @@ Timeout is 30 seconds per request, output is capped at 2048 tokens, and there ar
 automatic retries. Configuration permits at most 10 requests and 8 images per request.
 
 Responses must contain one valid state, confidence, identity-clarity flag and visual
-explanation per supplied frame. Only previously UNKNOWN posture observations with an
-existing target ID, box and bed polygon may be updated. Bed-related labels must agree
-with the existing spatial relation. Known labels are advisory-only; identity and bed
-detection failures remain unresolved. Model confidence is a self-report, not calibrated
+explanation per supplied frame. UNKNOWN posture observations require an existing target
+ID, box and bed polygon to be updated. A conflicting known label additionally requires
+a neighbouring Gemini assessment within 1.5 seconds to agree and local observations
+between those frames to support that state. Identity changes, missing boxes and UNKNOWN
+gaps block these corrections. Support is evaluated from original evidence, so accepted
+corrections cannot recursively justify further changes. Bed-related labels must agree
+with the spatial relation, and WALKING requires the configured movement-speed threshold.
+Identity and bed detection failures remain unresolved. Each decision includes an
+acceptance/rejection reason and supporting timestamps. Model confidence is a self-report, not calibrated
 accuracy. Validated updates go through the temporal tracker; Gemini cannot directly
 create events or alerts. Missing keys, timeouts, rejected/invalid responses and API errors
 preserve the local analysis. No key or encoded image is written into results.
 
 `gemini_review` records per-frame assessments, accepted updates, errors by type and token
 usage. The annotated video still displays first-pass candidates; the JSON includes
+accepted corrections only at assessed timestamps; other frames are not relabelled by
+interpolation. HTTP failures include `http_status` and `error_category` (for example,
+429 means rate limit or quota), without logging provider bodies or credentials. Old
+HTTPError entries cannot be diagnosed retroactively without a saved status code.
+The JSON includes
 accepted Gemini evidence. The integration is tested with mocked API responses; a live
 call and labelled evaluation are still needed before claiming an accuracy improvement.
 

@@ -65,6 +65,71 @@ class PoseTests(unittest.TestCase):
         self.assertEqual(detector.select_target([patient,visitor]), patient)
         self.assertIsNone(detector.select_target([visitor]))
 
+    def test_single_person_outside_bed_can_initialize(self):
+        detector = YoloPoseDetector.__new__(YoloPoseDetector)
+        detector.bed_polygon = [[0,0],[100,0],[100,100],[0,100]]
+        detector.target_track_id = None
+        person = dict(id=7,bbox=(400,400,100,100))
+        self.assertEqual(detector.select_target([person]),person)
+        self.assertEqual(detector.last_reason,'target_selected')
+        self.assertIsNone(detector.select_target([dict(id=8,bbox=(400,400,100,100))]))
+        self.assertEqual(detector.last_reason,'tracked_target_missing')
+
+    def test_seated_extended_legs_on_mattress(self):
+        p = self.pose({5:(80,30),6:(100,30),11:(80,130),12:(100,130),
+                       13:(140,145),14:(160,145),15:(220,170),16:(240,170)})
+        for t in (0,.333,.667):
+            result = self.observer.observe(t,(40,0,240,200),.9,p,1)
+            self.assertEqual(result.state,State.SITTING_ON_BED)
+        self.assertEqual(result.reason,'upright_flexed_hips_legs_over_bed')
+
+    def test_missing_torso_has_specific_reason(self):
+        o = self.observer.observe(0,(0,0,200,200),.9,[],1)
+        self.assertEqual(o.reason,'missing_or_degenerate_torso_keypoints')
+
+    def test_rising_with_planted_feet_is_not_walking(self):
+        seated = self.pose({5:(100,50),11:(100,150),13:(180,150),15:(180,280)})
+        upright = self.pose({5:(180,0),11:(180,100),13:(180,200),15:(180,280)})
+        self.observer.observe(0,(50,0,150,290),.9,seated,1)
+        result = self.observer.observe(.6,(50,0,150,290),.9,upright,1)
+        self.assertEqual(result.state, State.STANDING)
+        self.assertEqual(result.reason, 'rising_with_planted_feet')
+
+    def test_real_walk_after_sitting_is_allowed_at_different_scales(self):
+        for factor in (.5, 1, 2):
+            observer = PoseActivityObserver([[0,0],[1000,0],[1000,1000],[0,1000]])
+            seated = self.pose({5:(100,50),11:(100,150),13:(180,150),15:(180,280)})
+            walking = self.pose({5:(200,50),11:(200,150),13:(200,200),15:(230,280)})
+            scaled = lambda p: [[x*factor,y*factor,c] for x,y,c in p]
+            observer.observe(0,(0,0,500,500),.9,scaled(seated),1)
+            self.assertEqual(observer.observe(.6,(0,0,500,500),.9,scaled(walking),1).state, State.WALKING)
+
+    def test_missing_pose_resets_motion_history(self):
+        p = self.pose({5:(100,50),11:(100,150),13:(100,200),15:(100,280)})
+        self.observer.observe(0,(0,0,300,300),.9,p,1)
+        self.observer.observe(.3,None,0,None,1)
+        moved = [[x+100,y,c] for x,y,c in p]
+        self.assertEqual(self.observer.observe(.6,(0,0,400,300),.9,moved,1).state, State.STANDING)
+
+    def test_turning_steps_do_not_cancel_motion(self):
+        for t, x in [(0,100),(.25,120),(.5,100),(.75,120),(1,100)]:
+            p = self.pose({5:(x,50),11:(x,150),13:(x,200),15:(x,280)})
+            result = self.observer.observe(t,(0,0,300,300),.9,p,1)
+        self.assertEqual(result.state, State.WALKING)
+
+    def test_small_pose_jitter_is_not_walking(self):
+        for i in range(8):
+            x = 100 + i % 2
+            p = self.pose({5:(x,50),11:(x,150),13:(x,200),15:(x,280)})
+            result = self.observer.observe(i*.2,(0,0,300,300),.9,p,1)
+        self.assertEqual(result.state, State.STANDING)
+
+    def test_slow_hip_motion_with_clear_steps(self):
+        for t, hip, foot in [(0,100,100),(.5,110,125),(1,120,150)]:
+            p = self.pose({5:(hip,50),11:(hip,150),13:(hip,210),15:(foot,280)})
+            result = self.observer.observe(t,(0,0,300,300),.9,p,1)
+        self.assertEqual(result.state, State.WALKING)
+
     def test_ambiguous_initial_identity(self):
         detector = YoloPoseDetector.__new__(YoloPoseDetector)
         detector.bed_polygon = [[0,0],[300,0],[300,300],[0,300]]

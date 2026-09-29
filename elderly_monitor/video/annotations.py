@@ -37,6 +37,8 @@ def draw_annotation(frame, observation: Observation, bed_polygon: list[list[int]
     polygon = np.array(bed_polygon, dtype=np.int32)
     if len(polygon) >= 3:
         cv2.polylines(frame, [polygon], True, (255, 160, 0), 3)
+    if observation.mattress_polygon:
+        cv2.polylines(frame, [np.array(observation.mattress_polygon,dtype=np.int32)], True, (255,0,255), 3)
     if observation.bbox is not None:
         x, y, w, h = observation.bbox
         cv2.rectangle(frame, (x, y), (x + w, y + h), (0, 220, 0), 3)
@@ -52,4 +54,7 @@ def draw_annotation(frame, observation: Observation, bed_polygon: list[list[int]
     cv2.putText(frame, label, (20, 40), cv2.FONT_HERSHEY_SIMPLEX, 0.8, (255, 255, 255), 2)
     cv2.putText(frame, f"ID={observation.track_id} {observation.reason}", (20, 75),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255,255,255), 1)
+    if observation.mattress_polygon:
+        cv2.putText(frame, f"Surface evidence: {observation.support_evidence}", (20,100),
+                    cv2.FONT_HERSHEY_SIMPLEX,.5,(255,255,255),1)
 

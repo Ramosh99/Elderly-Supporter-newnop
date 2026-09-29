@@ -9,8 +9,48 @@ from elderly_monitor.review.gemini import GeminiClient, validate_assessment, app
 
 
 class GeminiTests(unittest.TestCase):
+    def supported_pair(self):
+        a=replace(self.observation(),bbox=(0,0,100,100),state=State.WALKING)
+        b=replace(a,timestamp_sec=1.5,state=State.STANDING,confidence=0.9)
+        items=[{**self.assessment(),'index':i,'state':'STANDING'} for i in range(2)]
+        return [a,b],items
+
+    def test_known_correction_requires_local_and_vlm_support(self):
+        obs,items=self.supported_pair()
+        changes,decisions=apply_assessments(obs,items,0.8)
+        self.assertEqual(changes[1].state,State.STANDING)
+        self.assertEqual(decisions[0]['application'],'accepted_supported_correction')
+        self.assertNotIn(1.5,changes)
+
+    def test_identity_switch_or_unknown_gap_blocks_correction(self):
+        obs,items=self.supported_pair()
+        gap=replace(obs[0],timestamp_sec=1.25,state=State.UNKNOWN)
+        changes,_=apply_assessments(obs,items,0.8,context=[obs[0],gap,obs[1]])
+        self.assertFalse(changes)
+        obs[1]=replace(obs[1],track_id=2)
+        self.assertFalse(apply_assessments(obs,items,0.8)[0])
+
+    def test_vlm_agreement_alone_is_insufficient(self):
+        obs,items=self.supported_pair()
+        obs[1]=replace(obs[1],state=State.WALKING)
+        self.assertFalse(apply_assessments(obs,items,0.8)[0])
+
+    def test_http_status_logged_without_provider_details(self):
+        import numpy as np
+        from urllib.error import HTTPError
+        obs,_=self.supported_pair()
+        capture=MagicMock(); capture.get.return_value=30
+        capture.read.return_value=(True,np.zeros((100,100,3),dtype=np.uint8))
+        client=MagicMock(); client.assess.side_effect=HTTPError('https://example.invalid/private',429,'private-message',{},None)
+        with patch('cv2.VideoCapture',return_value=capture):
+            result,log=review_with_gemini('unused',obs,3,self.config(),client)
+        self.assertEqual(result,obs)
+        self.assertEqual(log['requests'][0]['http_status'],429)
+        self.assertEqual(log['requests'][0]['error_category'],'rate_limit_or_quota')
+        self.assertNotIn('private',json.dumps(log))
+
     def config(self):
-        return resolve_config({'bed_region_mode':'auto','gemini_enabled':True})
+        return resolve_config({'bed_region_mode':'auto','gemini_enabled':True,'gemini_cache_dir':''})
 
     def assessment(self, **changes):
         return dict(index=0,state='SITTING_ON_BED',confidence=0.9,target_clear=True,

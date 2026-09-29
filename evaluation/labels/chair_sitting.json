@@ -1,0 +1,40 @@
+{
+  "video": "videos\\chair_sitting.mp4",
+  "observation_duration_sec": 10.0,
+  "reviewed": true,
+  "annotation_notes": "Person rises immediately, walks toward chair, turns and sits. Short initial seated baseline may challenge event detection. Walking includes turning steps; boundary near 7.5s is approximate.",
+  "timeline": [
+    {
+      "start_sec": 0,
+      "end_sec": 0.375,
+      "state": "SITTING_ON_BED"
+    },
+    {
+      "start_sec": 0.375,
+      "end_sec": 1.25,
+      "state": "STANDING"
+    },
+    {
+      "start_sec": 1.25,
+      "end_sec": 7.5,
+      "state": "WALKING"
+    },
+    {
+      "start_sec": 7.5,
+      "end_sec": 10.0,
+      "state": "SITTING_OUTSIDE_BED"
+    }
+  ],
+  "events": [
+    {
+      "event": "bed_exit",
+      "start_time_sec": 0.375
+    }
+  ],
+  "annotation_status": "ai_visual_draft_completed",
+  "annotator": "Codex visual inspection of original-video contact sheets",
+  "human_reviewed": true,
+  "review_method": "20 overview frames per clip; additional 0.25s or 0.5s samples around selected transitions. Not exhaustive frame-by-frame playback.",
+  "boundary_uncertainty_sec": 0.5,
+  "event_definition": "Draft support-based definition: exit when pelvis leaves bed support during a completed rise; return when seated/lying support is re-established. Human must reconcile this with assignment event policy; proximity alone does not suppress exit."
+}
