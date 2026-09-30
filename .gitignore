@@ -1,4 +1,7 @@
 .venv/
+.env
+.env.*
+!.env.example
 __pycache__/
 *.py[cod]
 config.json
@@ -7,3 +10,4 @@ output/
 *.pt
 Ultralytics/
 tmp/
+# /deliverables

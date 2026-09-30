@@ -1,0 +1,18 @@
+{
+  "video": "videos/walking.mp4",
+  "observation_duration_sec": 20.000,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0.000,  "end_sec": 0.53,  "state": "UNKNOWN" },
+    { "start_sec": 0.53,  "end_sec": 5.167,  "state": "WALKING" },
+    { "start_sec": 5.167,  "end_sec": 5.227,  "state": "STANDING" },
+    { "start_sec": 5.227, "end_sec": 7.611, "state": "WALKING" },
+    { "start_sec": 7.611,  "end_sec": 11.033, "state": "SITTING_OUTSIDE_BED" },
+    { "start_sec": 11.033, "end_sec": 12.167, "state": "STANDING" },
+    { "start_sec": 12.167, "end_sec": 20.000, "state": "WALKING" }
+  ],
+  "events": [
+    { "event": "bed_exit", "start_time_sec": 0.600 }
+  ]
+}

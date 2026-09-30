@@ -1,179 +1,91 @@
 # Elderly Activity and Bed-Exit Monitor
 
-This system uses pretrained YOLO models to analyze a fixed-camera video,
-detects one person, estimates their activity relative to a configured bed region, smooths
-observations over time, and produces a JSON timeline, bed-exit/return events, durations,
-and a `NORMAL`/`MONITOR`/`ALERT` decision.
+An assignment prototype combining pretrained YOLO pose estimation, bed segmentation,
+temporal tracking and bounded Gemini visual review. It processes continuous recorded
+video offline and produces activities, durations, bed events and monitoring decisions.
+Live streaming is not implemented.
 
-```mermaid
-flowchart LR
-    V[Video] --> S[Timestamped frame sampler]
-    V --> B[YOLO bed segmentation]
-    S --> D[YOLO Pose and ByteTrack]
-    B --> O[Bed geometry, joint angles, movement]
-    D --> O
-    O --> T[Temporal state tracker]
-    T --> E[Bed exit and return events]
-    T --> R[Timeline, durations, alert decision]
-```
+## Submission evidence
 
-## Code structure
+See [deliverables](deliverables/README.md), [architecture](deliverables/ARCHITECTURE.md),
+[evaluation](deliverables/EVALUATION.md) and [three failure cases](deliverables/FAILURE_CASES.md).
 
-```text
-elderly_monitor/
-  config.py             Application settings, defaults and loading
-  models.py             Shared observations, states, segments and events
-  pipeline.py           Coordinates analysis
-  vision/
-    bed_detector.py     YOLO bed segmentation and occupancy boundary
-    pose_detector.py    YOLO Pose and ByteTrack identity selection
-    pose_observer.py    Pose and bed geometry to activity evidence
-    geometry.py         Polygon and distance calculations
-  temporal/
-    tracker.py          Temporal smoothing, durations and summary assembly
-    events.py           Spatial bed-exit and return confirmation
-    alerts.py           Recording-level decisions and reasons
-    states.py           Shared in-bed/out-of-bed state groups
-  video/
-    reader.py           Metadata, frame sampling and segment access
-    annotations.py      Overlay drawing and annotated video writing
-tests/                  Regression tests
-tools/                  Manual bed-region selector
-monitor.py              CLI entry point
-```
+Ten-clip results (160 seconds): **82.01% duration-weighted activity accuracy**,
+**78.82% mean clip accuracy**. Bed-exit precision/recall: **66.7%/40.0%**. Return
+precision/recall: **33.3%/33.3%**. These development results do not establish deployment
+reliability. Review the evidence manifest and replay notes before comparing versions.
 
-Imports now use the package locations, for example
-`from elderly_monitor.temporal.tracker import TemporalStateTracker` and
-`from elderly_monitor.config import load_config`. The CLI commands and JSON format
-remain unchanged. Review-agent and evaluation modules will be added when implemented;
-there are no placeholder packages for them yet.
+## Run instructions
 
-## Run
-
-Requires Python 3.10 or newer.
+Python 3.10+; locally tested with Python 3.12. Run from the project root in PowerShell:
 
 ```powershell
 python -m venv .venv
-.venv\Scripts\Activate.ps1
-pip install -r requirements.txt
+.\.venv\Scripts\Activate.ps1
+python -m pip install -r requirements.txt
+# Fresh checkout only; preserve an existing configuration:
 Copy-Item config.example.json config.json
-python monitor.py path\to\video.mp4 --config config.json --output output\result.json --annotated-video output\annotated.mp4
+python monitor.py videos/standing_bed.mp4 --config config.json --output output/result.json --annotated-video output/annotated.mp4 --include-observations
+python run_all.py
+python -m unittest discover -s tests
 ```
 
-With `bed_region_mode: "auto"`, YOLO segmentation (`yolo11n-seg.pt`) samples five
-frames from the first four seconds, checks mask agreement, and uses a detected bed
-polygon for that video. The model downloads on first use. Automatic mode refreshes the
-region once and keeps it fixed by default (`refresh_bed_each_sample: false`). This
-prevents a standing person obscuring the bed from invalidating the calibrated region.
-The camera and bed must stay fixed. Set `refresh_bed_each_sample: true` to opt into
-re-detection; in that mode missing or ambiguous beds produce UNKNOWN. Re-detection
-is not camera stabilization: camera movement can still distort walking-speed estimates
-and person tracking. Manual regions remain fixed.
+The example config enables automatic bed segmentation but **disables Gemini**. Set
+`gemini_enabled` to `true` in config.json and put `GEMINI_API_KEY=your-key-here` in
+local `.env` to enable it. Never commit the key. Network/API access is required and
+calls may incur charges. YOLO weights download on first use if absent.
 
-The occupancy polygon is a convex envelope around the segmented bed, bridging gaps
-where the person hides it. This preserves angled edges but can include nearby floor,
-headboards or furniture; it is an approximation, not an exact mattress mask. Inspect
-the overlay or use a manual polygon for a fixed camera when the envelope is unsuitable.
-Initial raw segmentation and calibration details are in `analysis.bed_region`; refreshed
-occupancy polygons are stored per observation with `--include-observations`.
+Place videos in `videos/`. The batch runner evaluates matching reviewed files in
+`evaluation/labels/` and overwrites `output/evaluation/final/`. Per-video settings are
+read from `config/cameras/<video_stem>.json`. Media and model weights are not bundled
+in the deliverables snapshot. Run `python tools/select_bed_region.py --help` for
+optional bed/mattress/floor calibration.
 
-If detection fails or beds are ambiguous, analysis stops instead of reusing an unrelated
-ROI. For manual correction, run `python tools/select_bed_region.py path\to\video.mp4`:
-click around the mattress boundary, press Enter to save, Backspace to undo, or Escape
-to cancel. This preserves other configuration settings and selects manual mode.
-Manual regions must be recalibrated for a different camera view; coordinates outside
-the video frame are rejected. Automatic masks may include bed frames and headboards,
-and are not guaranteed to identify only the mattress surface.
-
-Run the state/event tests with:
+Regenerate portable submission evidence without inference or API calls:
 
 ```powershell
-python -m unittest discover -s tests -v
+python -m evaluation.build_deliverables
 ```
 
-## Pose detection and tracking
+This re-evaluates saved predictions; it does not update predictions for changed code.
+Final numeric durations, timelines and events are in `deliverables/examples/*.json`.
+Confusion matrices and duration errors are in `deliverables/evaluation_metrics.json`.
 
-The default detector is pretrained `yolo11n-pose.pt` with ByteTrack. The first run
-downloads weights; no model training is needed. It runs on CPU by default. Set
-`device` in the configuration to change the inference device.
+## Pipeline and decisions
 
-The system selects the only tracked person overlapping the bed and locks their ID.
-Start the video with the monitored person alone at the bed. If multiple people overlap
-the bed, selection waits; `target_track_id` can explicitly select an ID. Missing target
-tracks produce UNKNOWN rather than switching to another person. ByteTrack cannot
-guarantee identity after long occlusions or distinguish caregiver roles semantically.
+Frames are sampled in timestamp order, normally at 3 fps. YOLO produces the bed outline
+and tracked person keypoints. Geometry, posture and motion rules infer seven states:
+LYING_IN_BED, SITTING_ON_BED, SITTING_OUTSIDE_BED, STANDING, WALKING, OUT_OF_BED, UNKNOWN.
+Bed overlap alone does not prove physical contact. Optional mattress/floor calibration
+provides additional support evidence.
 
-Posture uses shoulder/hip orientation and knee angles, bed membership uses hip position,
-and movement uses hip speed. These are camera-dependent rules, not a trained activity
-classifier. Hidden legs or uncertain torso joints can produce UNKNOWN. Annotated video
-shows the skeleton, target ID, raw candidate state and reason; JSON timeline states are
-temporally smoothed. Use `--include-observations` for joint coordinates and reasons.
+The review agent selects uncertain observations, activity/bed transitions and ambiguous
+upright poses over an uncalibrated bed. It gathers denser frames within budgets and
+optionally sends selected images to Gemini. Adjacent agreeing assessments, spatial checks
+and temporal checks restrict corrections. Correct frames can be included as context;
+request limits can leave gaps. Retries and caching improve availability, not accuracy.
 
-Bed calibration now supports automatic segmentation and manual polygons. Optional VLM
-review is not implemented. Person detection uses only `yolo_pose`; the old HOG,
-background-subtraction and box-shape classification paths have been removed.
-Geometry and temporal rules remain necessary to convert model outputs into activity
-states, bed-exit events and duration summaries. OpenCV handles video I/O, masks,
-annotations and the optional manual polygon editor.
-Tracking integration follows https://docs.ultralytics.com/modes/track/.
+Temporal tracking produces the final timeline and confirms bed events. NORMAL is the
+default. UNKNOWN time, prolonged sitting (default 120 seconds), or an unreturned exit
+cause MONITOR. Confirmed prolonged absence (default 300 seconds) causes ALERT. These
+are configurable assignment rules, not clinically validated thresholds. Short clips
+do not demonstrate long-duration alert performance. Confidence is not calibrated.
 
-## Temporal review, events and decisions
+**Annotated MP4 files show first-pass candidate states**, not the final Gemini-reviewed
+timeline. Present them alongside final JSON; candidate overlays are not final results.
 
-The tracker reviews timestamped observations offline at the end of the video. Each sample
-represents the interval until the next sample, with a cap on how long missing samples
-can be extrapolated. Leading gaps, missing frames, low confidence and uncertain poses
-are UNKNOWN. Durations include all seven states and sum to the video duration (subject
-to millisecond rounding). Calling `finish()` again does not duplicate segments or events.
+## Source map
 
-Activity smoothing and event confirmation use separate thresholds:
+| Location | Responsibility |
+|---|---|
+| `monitor.py`, `run_all.py` | Single-video CLI and batch evaluation |
+| `elderly_monitor/pipeline.py` | Orchestration |
+| `elderly_monitor/vision/` | Pose, bed detection, geometry, support, motion |
+| `elderly_monitor/temporal/` | Smoothing, events and alert policy |
+| `elderly_monitor/review/` | Window planning, resampling and Gemini |
+| `elderly_monitor/video/` | Sampling and candidate overlays |
+| `evaluation/evaluate.py` | Accuracy, confusion, duration and event metrics |
+| `tests/` | 109 passing unit tests at wrap-up |
 
-| Setting | Default | Meaning |
-| --- | --- | --- |
-| `state_hold_sec` | 1.5 | Minimum duration for non-bed activity runs |
-| `posture_hold_sec` | 0.6 | Minimum duration for lying/sitting on bed |
-| `event_hold_sec` | 1.5 | Continuous spatial evidence before exit/return confirmation |
-| `context_gap_sec` | 2.0 | UNKNOWN gap that invalidates remembered bed-event context |
-| `min_state_confidence` | 0.35 | Below this, the observation becomes UNKNOWN |
-| `sitting_monitor_sec` | 120 | Sustained sitting on bed warrants MONITOR |
-| `alert_after_out_of_bed_sec` | 300 | Continuous confidently-away evidence warrants ALERT |
-
-A short activity flicker is replaced only when its sufficiently long neighbours agree
-and have the same person ID. Other unsupported short runs become UNKNOWN. Raw UNKNOWN
-intervals are never filled with a guessed activity. Video overlays explicitly label raw
-predictions as `candidate`; the JSON timeline contains the offline reviewed states.
-When standing/walking labels flicker but sustained spatial evidence confirms the person
-is away, short detailed activity runs become the broader OUT_OF_BED state rather than
-discarding the known location.
-
-Bed exits require a known in-bed baseline followed by sustained `bed_relation: away`.
-Hip distance from the bed boundary is compared with 20% of torso length (minimum 5 px).
-Standing near the bed alone does not confirm an exit. Changes between standing and
-walking do not restart the spatial evidence window. A return requires sustained in-bed
-evidence and starts at the return time, not the preceding exit. Initial absence can
-establish an away baseline but does not invent an exit before the video began.
-Short UNKNOWN gaps retain the baseline but reset candidate evidence; long gaps and
-target ID changes discard the baseline. UNKNOWN never contributes to confirmed absence.
-
-Summary decisions describe the whole recording, not a live notification:
-- ALERT: the longest continuously confirmed absence reaches the configured threshold.
-- MONITOR: any reviewed UNKNOWN time, prolonged sitting on bed, or an exit without a
-  confirmed return.
-- NORMAL: none of those conditions occurred.
-
-`decision_reasons` explains the outcome. `temporal_reviews` records event confirmations
-and context decisions. `longest_confirmed_away_sec` is spatially verified absence;
-`longest_out_of_bed_period_sec` is based on activity labels and may include standing
-beside the bed. Events use spatial evidence, while the activity timeline uses posture
-smoothing, so their boundaries need not exactly coincide. These are configurable
-demonstration policies; prolonged sitting is not a measured clinical risk or edge detector.
-
-This is deterministic temporal context review, not a VLM agent that requests new video
-segments. Actual activity accuracy, event precision/recall and duration errors still need
-manually labelled clips. Synthetic regression tests do not substitute for that evaluation.
-
-The supplied `Supine-to-Sit.mp4` contains an overlapping caregiver and patient. In the
-initial YOLO run, the pose mixes joints from both people and then loses the target.
-Its labels are not reliable ground truth. Use a fixed camera with the monitored person
-fully visible and initially alone to evaluate the basic pipeline, then evaluate caregiver
-occlusion separately. `analysis.known_observation_fraction` and `analysis.warnings`
-report low coverage, but do not detect every incorrect pose or identity assignment.
+Full per-clip confusion matrices, duration errors and event metrics are in
+`deliverables/evaluation_metrics.json`.

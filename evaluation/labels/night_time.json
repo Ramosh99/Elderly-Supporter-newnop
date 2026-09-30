@@ -1,0 +1,15 @@
+{
+  "video": "videos/night_time.mp4",
+  "observation_duration_sec": 10.000,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0.000,  "end_sec": 1.700,  "state": "LYING_IN_BED" },
+    { "start_sec": 1.700,  "end_sec": 6.033,  "state": "SITTING_ON_BED" },
+    { "start_sec": 6.033,  "end_sec": 8.033,  "state": "STANDING" },
+    { "start_sec": 8.033,  "end_sec": 10.000, "state": "WALKING" }
+  ],
+  "events": [
+    { "event": "bed_exit", "start_time_sec": 6.533 }
+  ]
+}

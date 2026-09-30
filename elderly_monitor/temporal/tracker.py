@@ -8,6 +8,7 @@ from .events import detect_events
 from .alerts import decide_alert
 
 from .states import IN_BED, OUT_OF_BED
+from ..vision.surface import event_location
 
 
 class TemporalStateTracker:
@@ -77,8 +78,29 @@ class TemporalStateTracker:
             else:
                 runs.append([o.state, o.timestamp_sec, stop, [(o.confidence, stop-o.timestamp_sec)], o.track_id])
         segments = []
+        # Offline stop confirmation: bridge only a brief stop surrounded by
+        # walking, following an already sustained walk of the same target.
+        for i in range(1, len(runs)-1):
+            previous, current, following = runs[i-1:i+2]
+            if (current[0] == State.STANDING and current[2]-current[1] < 1.0
+                    and previous[0] == following[0] == State.WALKING
+                    and previous[2]-previous[1] >= self.hold_sec
+                    and current[4] is not None and previous[4] == current[4] == following[4]):
+                current[0] = State.WALKING
+        merged = []
+        for run in runs:
+            if merged and merged[-1][0] == run[0] and merged[-1][4] == run[4]:
+                merged[-1][2] = run[2]
+                merged[-1][3].extend(run[3])
+            else:
+                merged.append(run)
+        runs = merged
         for i, (state, start, stop, confidence, identity) in enumerate(runs):
             threshold = self.posture_hold_sec if state in IN_BED else self.hold_sec
+            if (state == State.STANDING and i > 0 and runs[i-1][0] == State.WALKING
+                    and identity is not None and runs[i-1][4] == identity
+                    and runs[i-1][2]-runs[i-1][1] >= self.hold_sec):
+                threshold = 1.0
             if state != State.UNKNOWN and stop-start + 1e-9 < threshold:
                 if (0 < i < len(runs)-1 and runs[i-1][0] == runs[i+1][0]
                         and runs[i-1][0] != State.UNKNOWN
@@ -121,7 +143,9 @@ class TemporalStateTracker:
             if o.track_id != away_identity:
                 running_away = 0.0
             away_identity = o.track_id
-            running_away = running_away + stop-o.timestamp_sec if o.state in OUT_OF_BED and o.bed_relation == "away" else 0.0
+            away = (event_location(o) == 'away' if o.support_evidence != 'uncalibrated'
+                    else o.state in OUT_OF_BED and o.bed_relation == "away")
+            running_away = running_away + stop-o.timestamp_sec if away else 0.0
             longest_away = max(longest_away, running_away)
         decision, reasons = decide_alert(
             durations["unknown"] > 0 or not intervals, longest_sitting, longest_away,

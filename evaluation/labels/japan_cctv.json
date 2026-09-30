@@ -1,0 +1,17 @@
+{
+  "video": "videos/japan_cctv.mp4",
+  "observation_duration_sec": 10.0,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0,     "end_sec": 1.25, "state": "LYING_IN_BED" },
+    { "start_sec": 1.25, "end_sec": 3.12, "state": "SITTING_ON_BED" },
+    { "start_sec": 3.12, "end_sec": 8.00, "state": "STANDING" },
+    { "start_sec": 8.00, "end_sec": 9.125, "state": "SITTING_ON_BED" },
+    { "start_sec": 9.125, "end_sec": 10.0,  "state": "LYING_IN_BED" }
+  ],
+  "events": [
+    { "event": "bed_exit",      "start_time_sec": 2.90 },
+    { "event": "return_to_bed", "start_time_sec": 7.91 }
+  ]
+}

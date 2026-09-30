@@ -1,10 +1,12 @@
-"""Confirm bed events using spatial evidence over time."""
+"""Confirm loss and re-establishment of bed support over time."""
 from ..models import Event, State
-from .states import IN_BED
+from ..vision.surface import event_location
+from .support_gaps import bridge_support_gaps
 
 
 def detect_events(intervals, posture_hold_sec, event_hold_sec, context_gap_sec):
-    events, reviews = [], []
+    intervals, reviews = bridge_support_gaps(intervals)
+    events = []
     baseline = None
     baseline_state = State.UNKNOWN
     candidate = None
@@ -25,7 +27,10 @@ def detect_events(intervals, posture_hold_sec, event_hold_sec, context_gap_sec):
                 baseline = None
             continue
         unknown_start = None
-        location = "in" if o.state in IN_BED else "away" if o.bed_relation == "away" else None
+        # A sustained standing posture beside the mattress is already an exit.
+        # Image-plane proximity does not imply that the bed supports the person.
+        # Still require known bed context; missing geometry is not exit evidence.
+        location = event_location(o)
         if location is None:
             if candidate is not None:
                 reviews.append({"time_sec": o.timestamp_sec, "reason": "insufficient_spatial_evidence"})
@@ -41,7 +46,15 @@ def detect_events(intervals, posture_hold_sec, event_hold_sec, context_gap_sec):
         required = posture_hold_sec if baseline is None and location == "in" else event_hold_sec
         if stop-candidate_start + 1e-9 < required:
             continue
-        confirmed = candidate_start + required
+        # Bracketed support may retain a candidate, but confirmation waits for
+        # actual visible posture after the gap. It never fires within occlusion.
+        if o.reason == 'bridged_bed_support_gap':
+            continue
+        confirmed = max(candidate_start + required, o.timestamp_sec)
+        if baseline is None and location == "away":
+            reviews.append({"time_sec": confirmed,
+                            "reason": "insufficient_initial_in_bed_evidence",
+                            "evidence_start_sec": candidate_start})
         if baseline is not None:
             event_name = "bed_exit" if location == "away" else "return_to_bed"
             events.append(Event(event_name, candidate_start, confirmed, baseline_state,

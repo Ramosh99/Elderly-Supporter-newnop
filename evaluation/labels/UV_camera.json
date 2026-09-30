@@ -1,0 +1,14 @@
+{
+  "video": "videos/UV_camera.mp4",
+  "observation_duration_sec": 10.000,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0.000, "end_sec": 4.367, "state": "STANDING" },
+    { "start_sec": 4.367, "end_sec": 7.133, "state": "WALKING" },
+    { "start_sec": 7.133, "end_sec": 10.000, "state": "LYING_IN_BED" }
+  ],
+  "events": [
+    { "event": "return_to_bed", "start_time_sec": 4.200 }
+  ]
+}

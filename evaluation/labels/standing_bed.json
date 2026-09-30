@@ -1,0 +1,16 @@
+{
+  "video": "videos/standing_bed.mp4",
+  "observation_duration_sec": 10.0,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0,     "end_sec": 1.625, "state": "LYING_IN_BED" },
+    { "start_sec": 1.625, "end_sec": 5.625, "state": "SITTING_ON_BED" },
+    { "start_sec": 5.625, "end_sec": 6.25,  "state": "STANDING" },
+    { "start_sec": 6.25,  "end_sec": 9.5,   "state": "WALKING" },
+    { "start_sec": 9.5,   "end_sec": 10.0,  "state": "UNKNOWN" }
+  ],
+  "events": [
+    { "event": "bed_exit", "start_time_sec": 5.625 }
+  ]
+}

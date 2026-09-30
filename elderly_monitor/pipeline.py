@@ -12,6 +12,11 @@ from .vision.bed_detector import detect_bed_region, detect_bed_frame
 from .temporal.tracker import TemporalStateTracker
 from .video.reader import VideoReader
 from .video.annotations import AnnotatedVideoWriter
+from .review.agent import ReviewAgent
+from .review.evidence import VideoEvidence
+from .review.gemini import review_with_gemini
+from .review.chronology import classify_merged
+from .vision.surface import refresh_support
 
 
 def _build_detector(config):
@@ -25,6 +30,17 @@ def _build_detector(config):
 
 def _prepare_bed(video_path, config, reader):
     model = None
+    if config.get('mattress_polygon'):
+        if config.get('refresh_bed_each_sample'):
+            raise ValueError('Fixed mattress calibration requires refresh_bed_each_sample=false')
+        calibration = config.get('surface_calibration', {})
+        if calibration.get('video') and Path(calibration['video']).resolve() != video_path.resolve():
+            raise ValueError('Mattress calibration belongs to another video; recalibrate this camera view')
+        if calibration.get('frame_size') != [reader.width, reader.height]:
+            raise ValueError('Mattress calibration frame size differs; recalibrate')
+        for name in ('mattress_polygon','floor_polygon'):
+            if any(x < 0 or y < 0 or x >= reader.width or y >= reader.height for x,y in config.get(name,[])):
+                raise ValueError(f'{name} lies outside video')
     if config["bed_region_mode"] == "auto":
         config["bed_polygon"], details = detect_bed_region(video_path, config)
         if config["refresh_bed_each_sample"]:
@@ -35,6 +51,9 @@ def _prepare_bed(video_path, config, reader):
         details = {"source": "manual", "polygon": config["bed_polygon"]}
         if any(x < 0 or y < 0 or x > reader.width or y > reader.height for x, y in config["bed_polygon"]):
             raise ValueError("Saved bed polygon lies outside this video. Recalibrate it or set bed_region_mode='auto'.")
+    details['mattress_polygon'] = config.get('mattress_polygon')
+    details['floor_polygon'] = config.get('floor_polygon')
+    details['support_mode'] = 'calibrated_surface' if config.get('mattress_polygon') else 'legacy_whole_bed'
     return model, details
 
 
@@ -59,7 +78,8 @@ def analyze_video(video_path: Path, config: dict, include_observations: bool = F
         bed_model, bed_details = _prepare_bed(video_path, config, reader)
         detector, detector_name = _build_detector(config)
         observer = PoseActivityObserver(config["bed_polygon"], float(config["walking_speed_px_sec"]),
-                                        float(config["keypoint_confidence"]))
+                                        float(config["keypoint_confidence"]), config.get('mattress_polygon'),
+                                        config.get('floor_polygon'))
         tracker = _build_tracker(config, reader)
         with AnnotatedVideoWriter(annotated_video_path, reader.output_fps) as writer:
             for timestamp, frame in reader.frames():
@@ -74,6 +94,8 @@ def analyze_video(video_path: Path, config: dict, include_observations: bool = F
                 bbox, confidence = detector.detect(frame)
                 if bed_available:
                     observation = observer.observe(timestamp, bbox, confidence, detector.last_keypoints, detector.last_track_id)
+                    if bbox is None:
+                        observation = replace(observation, reason=getattr(detector, 'last_reason', 'missing_person_detection'))
                     observation = replace(observation, bed_polygon=config["bed_polygon"])
                 else:
                     observer.previous = None
@@ -85,12 +107,54 @@ def analyze_video(video_path: Path, config: dict, include_observations: bool = F
                 last_timestamp = timestamp
                 writer.write(frame, observation)
 
-    result = tracker.finish(reader.duration or last_timestamp)
+    duration = reader.duration or last_timestamp
+    initial_result = tracker.finish(duration)
+    first_pass = list(observations)
+    base_count = len(observations)
+    review_log = {'enabled': False, 'windows': []}
+    if config['review_enabled']:
+        observations, review_log = ReviewAgent(config).run(
+            observations, duration, VideoEvidence(video_path, config, observations))
+        observations = classify_merged(observations, config)
+        review_log['classification'] = 'one_chronological_motion_history'
+        first_times = {round(p.timestamp_sec,9) for p in first_pass}
+        for window in review_log['windows']:
+            window['known_extra_frames'] = sum(o.state != State.UNKNOWN for o in observations
+                if window['start_sec'] <= o.timestamp_sec < window['end_sec']
+                and round(o.timestamp_sec,9) not in first_times)
+        tracker = _build_tracker(config, reader)
+        for observation in observations:
+            tracker.update(observation)
+    pre_gemini = list(observations)
+    dense_result = tracker.finish(duration)
+    observations, gemini_log = review_with_gemini(video_path, observations, duration, config)
+    observations = [refresh_support(o,config) for o in observations]
+    tracker = _build_tracker(config, reader)
+    for observation in observations:
+        tracker.update(observation)
+    result = tracker.finish(duration)
+    result['gemini_review'] = gemini_log
+    review_log['before'] = {k: initial_result[k] for k in ('total_unknown_sec','bed_exit_count','bed_return_count','decision')}
+    review_log['after'] = {k: dense_result[k] for k in ('total_unknown_sec','bed_exit_count','bed_return_count','decision')}
+    result['stage_summaries'] = {name: {k: stage[k] for k in
+        ('total_unknown_sec','bed_exit_count','bed_return_count','decision')} for name,stage in
+        [('first_pass',initial_result),('after_dense',dense_result),('after_gemini',result)]}
+    for window in review_log['windows']:
+        for label, summary in (('before', initial_result), ('after', dense_result)):
+            window[label + '_unknown_sec'] = round(sum(
+                max(0.0, min(s['end_sec'], window['end_sec']) - max(s['start_sec'], window['start_sec']))
+                for s in summary['timeline'] if s['state'] == 'UNKNOWN'), 3)
+        window['conclusion'] = ('uncertainty_reduced' if window['after_unknown_sec'] < window['before_unknown_sec']
+                                else 'uncertainty_increased' if window['after_unknown_sec'] > window['before_unknown_sec']
+                                else 'uncertainty_unchanged')
+    result['agentic_review'] = review_log
     result["video"] = str(video_path)
     result["analysis"] = {
         "source_fps": round(reader.source_fps, 3),
         "sample_fps": float(config["sample_fps"]),
         "sampled_frame_count": len(observations),
+        "initial_sampled_frame_count": base_count,
+        "annotation_evidence": "first_pass_candidates",
         "detector": detector_name, "bed_region": bed_details,
         "target_track_id": getattr(detector, "target_track_id", None),
         "known_observation_fraction": round(sum(o.state != State.UNKNOWN for o in observations) / max(1, len(observations)), 3),
@@ -99,6 +163,9 @@ def analyze_video(video_path: Path, config: dict, include_observations: bool = F
             "sitting_monitor_sec", "alert_after_sec", "min_confidence", "max_sample_gap_sec")},
     }
     result["analysis"]["warnings"] = []
+    if config.get('mattress_polygon') and not config.get('floor_polygon'):
+        result['analysis']['warnings'].append(
+            'Mattress calibrated without floor region: upright floor support cannot confirm exits.')
     if result["analysis"]["known_observation_fraction"] < 0.5:
         result["analysis"]["warnings"].append(
             "Most sampled frames have uncertain posture or a missing target. Inspect the annotated video; activity totals are incomplete."
@@ -107,4 +174,6 @@ def analyze_video(video_path: Path, config: dict, include_observations: bool = F
         result["annotated_video"] = str(annotated_video_path)
     if include_observations:
         result["observations"] = [observation.to_dict() for observation in observations]
+        result['observation_stages'] = {'first_pass': [o.to_dict() for o in first_pass],
+                                        'pre_gemini': [o.to_dict() for o in pre_gemini]}
     return result

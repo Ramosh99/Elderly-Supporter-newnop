@@ -1,0 +1,14 @@
+{
+  "video": "videos/sleep_sit.mp4",
+  "observation_duration_sec": 40.0,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0,     "end_sec": 21.75, "state": "LYING_IN_BED" },
+    { "start_sec": 21.75, "end_sec": 26.75, "state": "SITTING_ON_BED" },
+    { "start_sec": 26.75, "end_sec": 30.75, "state": "LYING_IN_BED" },
+    { "start_sec": 30.75, "end_sec": 38.75, "state": "SITTING_ON_BED" },
+    { "start_sec": 38.75, "end_sec": 40.0,  "state": "LYING_IN_BED" }
+  ],
+  "events": []
+}

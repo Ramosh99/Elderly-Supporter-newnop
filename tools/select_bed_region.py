@@ -11,16 +11,22 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Click points around the bed to select a polygon")
     parser.add_argument("video", type=Path)
     parser.add_argument("--output", type=Path, default=Path("config.json"))
+    parser.add_argument('--region', choices=['bed','mattress','floor'], default='bed',
+                        help='Mattress means the top surface only; floor means the visible walking area')
+    parser.add_argument('--time', type=float, default=0, help='Source time in seconds for calibration')
     args = parser.parse_args()
 
     capture = cv2.VideoCapture(str(args.video))
+    if args.time < 0:
+        raise ValueError('Calibration time must be nonnegative')
+    capture.set(cv2.CAP_PROP_POS_MSEC,args.time*1000)
     ok, frame = capture.read()
     capture.release()
     if not ok:
         raise ValueError(f"Could not read first frame from {args.video}")
     import numpy as np
     points = []
-    window = "Click bed boundary | Enter: save | Backspace: undo | Esc: cancel"
+    window = f"Click {args.region} boundary | Enter: save | Backspace: undo | Esc: cancel"
     cv2.namedWindow(window, cv2.WINDOW_NORMAL)
     def click(event, x, y, flags, param):
         if event == cv2.EVENT_LBUTTONDOWN:
@@ -54,9 +60,24 @@ def main() -> None:
     }
     if args.output.exists():
         config.update(json.loads(args.output.read_text(encoding="utf-8")))
-    config.update(bed_polygon=points, bed_region_mode="manual")
+    if args.region == 'bed':
+        config.update(bed_polygon=points, bed_region_mode="manual")
+    else:
+        calibration = {'video':str(args.video.resolve()),'frame_size':[frame.shape[1],frame.shape[0]],
+                       'timestamp_sec':args.time}
+        if args.region == 'floor':
+            previous = config.get('surface_calibration',{})
+            if not config.get('mattress_polygon') or previous.get('video') != calibration['video'] or previous.get('frame_size') != calibration['frame_size']:
+                raise ValueError('Calibrate the mattress for this video into this config first')
+            config['floor_polygon'] = points
+        else:
+            config['mattress_polygon'] = points
+            config['surface_calibration'] = calibration
+            config.pop('floor_polygon',None)  # Previous floor calibration may belong to another view.
+        config['refresh_bed_each_sample'] = False
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(config, indent=2), encoding="utf-8")
-    print(f"Saved bed region to {args.output}")
+    print(f"Saved {args.region} region to {args.output}")
 
 
 if __name__ == "__main__":

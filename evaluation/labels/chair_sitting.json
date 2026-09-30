@@ -1,0 +1,14 @@
+{
+  "video": "videos/chair_sitting.mp4",
+  "observation_duration_sec": 10.0,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0,      "end_sec": 0.99,  "state": "STANDING" },
+    { "start_sec": 0.99,  "end_sec": 4.27,   "state": "WALKING" },
+    { "start_sec": 4.27,  "end_sec": 6.11,   "state": "STANDING" },
+    { "start_sec": 6.11,  "end_sec": 7.24,   "state": "WALKING" },
+    { "start_sec": 7.24,   "end_sec": 10.0,  "state": "SITTING_OUTSIDE_BED" }
+  ],
+  "events": []
+}

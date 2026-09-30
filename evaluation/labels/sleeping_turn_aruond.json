@@ -1,0 +1,10 @@
+{
+  "video": "videos/sleeping_turn_aruond.mp4",
+  "observation_duration_sec": 10.0,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0, "end_sec": 10.0, "state": "LYING_IN_BED" }
+  ],
+  "events": []
+}
