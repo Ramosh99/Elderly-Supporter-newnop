@@ -273,3 +273,46 @@ Without gates, Gemini introduces isolated wrong labels. The bracketing rule requ
 python -m pytest tests/
 # 102 passed
 ```
+
+---
+
+## 10. Production Improvements
+
+For a production-level system the following improvements would increase accuracy, reduce cost, and improve reliability:
+
+### High Impact — Reasonable Effort
+
+**1. Higher sample FPS (3 → 5–6 FPS)**
+More frames = more motion signal. Walking detection improves because ankle displacement is measured more frequently. Would reduce cold-start UNKNOWN faster and improve WALKING/STANDING discrimination.
+
+**2. Optical flow for motion evidence**
+Currently walking is detected by tracking keypoint positions across frames. Optical flow measures actual pixel movement — works even when keypoints are poor quality. Would significantly help low-light and IR camera clips where keypoints are unreliable.
+
+**3. Better bed detection with manual calibration**
+The auto YOLO segmentation sometimes includes furniture near the bed (headboard, nightstand). Manual calibration with `tools/select_bed_region.py` gives exact boundaries, reducing false "hip inside bed" readings and improving spatial evidence quality.
+
+---
+
+### Medium Impact — More Work
+
+**4. Multi-frame temporal context for pose classification**
+Currently each frame is classified independently then smoothed afterward. If the classifier looked at 3–5 consecutive frames together as a sliding window, it could use motion history directly during classification rather than as a post-processing step. This would reduce transition errors.
+
+**5. Re-identification after track loss**
+When ByteTrack loses the target (caregiver overlap, occlusion), the system falls back to UNKNOWN. Adding appearance-based re-ID (e.g. OSNet or FastReID) would recover the target faster after occlusion — directly addresses the `japan_cctv` failure case.
+
+**6. Depth estimation**
+A monocular depth model (e.g. MiDaS) could estimate whether the person is at bed height or floor height — strong spatial evidence for lying vs standing that does not depend on keypoint angle quality. Would help in cluttered or angled camera setups.
+
+---
+
+### Architectural Changes — Significant Effort
+
+**7. Replace heuristic pose rules with a trained activity classifier**
+Train a small MLP or LSTM on the 17 YOLO keypoints → activity label. Would generalise better across camera angles, body types, and partial occlusion. Requires labelled training data but would eliminate the current camera-dependent threshold tuning.
+
+**8. Video foundation model (e.g. Gemini 1.5 Pro with video input)**
+Instead of sending 5 isolated frames, send the whole clip as video. Gemini 1.5 Pro supports up to 1 hour of video input — it would see full transitions and temporal context directly rather than reasoning from static snapshots. More expensive per call but would handle all hard cases (transitions, occlusion, low light) in a single request.
+
+**9. Camera-specific fine-tuning**
+Fine-tune YOLO Pose on IR/UV footage for night-vision cameras. This solves `night_time` and `UV_camera` at the detection level rather than compensating downstream with VLM. A small labelled dataset from the target camera is sufficient for fine-tuning.
