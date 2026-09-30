@@ -164,18 +164,8 @@ class ReviewAgent:
                     parent_finding=finding['type'],
                 ))
 
-        elif finding['type'] == 'uncertainty_remains':
-            # Extend search into the next unvisited window forward
-            fwd_start = window['end_sec']
-            fwd_end = min(duration, fwd_start + context)
-            if fwd_end - fwd_start > 0.3 and round(fwd_start, 3) not in visited:
-                follow_ups.append(dict(
-                    start_sec=fwd_start, end_sec=fwd_end,
-                    trigger_sec=(fwd_start + fwd_end) / 2,
-                    reason='extended_uncertainty_search',
-                    action='analyze_following_segment',
-                    parent_finding=finding['type'],
-                ))
+        # uncertainty_remains without a transition does not justify forward extension —
+        # chaining "still uncertain" windows tiles the whole clip and confuses the tracker.
 
         return follow_ups
 

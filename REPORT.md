@@ -294,14 +294,14 @@ Evaluated on 10 human-labelled video clips with Gemini VLM and agentic review en
 | `sleep_sit` | **95.9%** | — | — | 0s |
 | `night_view` | **90.9%** | — | — | 0s |
 | `standing_bed` | **87.5%** | 100% / 100% | — | 0s |
-| `walking` | **76.7%** | — | — | 2s |
+| `walking` | **76.6%** | — | — | 2s |
 | `night_time` | **74.0%** | — | — | 0s |
-| `japan_cctv` | **70.8%** | 0% / 0% | 100% / 100% | 2s |
-| `granny` | **68.6%** | — | — | 0s |
+| `japan_cctv` | **69.5%** | 0% / 0% | 100% / 100% | 2s |
+| `granny` | **79.8%** | — | — | 1s |
 | `chair_sitting` | **59.0%** | — | — | 2s |
 | `UV_camera` | **54.9%** | — | 100% / 100% | 2s |
 
-**Overall average accuracy: 77.8%**
+**Overall: 82.0% duration-weighted, 78.8% mean clip accuracy**
 
 ### Per-Clip Bed Events
 
@@ -314,10 +314,10 @@ Evaluated on 10 human-labelled video clips with Gemini VLM and agentic review en
 | `walking` | 0 | 0 | 1 | — | 0% | 0 | 0 | 0 | — | — |
 | `night_time` | 0 | 0 | 1 | — | 0% | 0 | 0 | 0 | — | — |
 | `japan_cctv` | 0 | 1 | 1 | 0% | 0% | 1 | 0 | 0 | **100%** | **100%** |
-| `granny` | 0 | 2 | 1 | 0% | 0% | 0 | 2 | 1 | 0% | 0% |
+| `granny` | 1 | 0 | 0 | **100%** | **100%** | 0 | 1 | 1 | 0% | 0% |
 | `chair_sitting` | 0 | 0 | 0 | — | — | 0 | 0 | 0 | — | — |
 | `UV_camera` | 0 | 0 | 0 | — | — | 0 | 1 | 1 | 0% | 0% |
-| **Total** | **1** | **3** | **4** | **25%** | **20%** | **1** | **3** | **2** | **25%** | **33%** |
+| **Total** | **2** | **1** | **3** | **67%** | **40%** | **1** | **2** | **2** | **33%** | **33%** |
 
 ### Confusion Between Similar States
 

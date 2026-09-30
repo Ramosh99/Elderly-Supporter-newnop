@@ -10,9 +10,9 @@ Live streaming is not implemented.
 See [deliverables](deliverables/README.md), [architecture](deliverables/ARCHITECTURE.md),
 [evaluation](deliverables/EVALUATION.md) and [three failure cases](deliverables/FAILURE_CASES.md).
 
-Saved ten-clip results (160 seconds): **80.00% duration-weighted activity accuracy**,
-**77.83% mean clip accuracy**. Bed-exit precision/recall: **25%/20%**. Return
-precision/recall: **25%/33.3%**. These development results do not establish deployment
+Ten-clip results (160 seconds): **82.01% duration-weighted activity accuracy**,
+**78.82% mean clip accuracy**. Bed-exit precision/recall: **66.7%/40.0%**. Return
+precision/recall: **33.3%/33.3%**. These development results do not establish deployment
 reliability. Review the evidence manifest and replay notes before comparing versions.
 
 ## Run instructions
