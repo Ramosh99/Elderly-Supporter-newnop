@@ -1,0 +1,42 @@
+{
+  "chair_sitting": {
+    "prediction_sha256": "22958fa171c4afa386b7dc88f5a2759477528f56752018fa36f05c9f2bca04d7",
+    "labels_sha256": "460627eb5afc21c37fe137215d42087e74b2ef2e9521cdb4dc9fef083bfb2b65"
+  },
+  "granny": {
+    "prediction_sha256": "f3c407d0062652d6af84508d86a83e4fbc65ad8c785db46fe00e72680c954508",
+    "labels_sha256": "ca17cd83fd646377ec49457f8e947f943fb02d2976d6642668aa63249b842e00"
+  },
+  "japan_cctv": {
+    "prediction_sha256": "cb679590bd9b9f9f39e181c9e1027ba639773ba9e9fa6496d344c58f78245810",
+    "labels_sha256": "9c43055ff6492188aa07981b257bcd08b0347e86ae378f8cff8e8a4eec91c403"
+  },
+  "night_time": {
+    "prediction_sha256": "9ff2d3b94123b62a9f549994b0508c1c7101b9d13dda9131dfb42bd31e0e0607",
+    "labels_sha256": "6e88dc16183ba891647a2ee5c5bf6c008af615e6b0205014cd645b55a0b6dd3f"
+  },
+  "night_view": {
+    "prediction_sha256": "e45888c620c7e03031d05b3717042683aa8a75e5f3e5a6cc893c7d176357dd76",
+    "labels_sha256": "468886d76ebb92a18d347fae75349dbd45b6eb439302a635123e70528e0dfc18"
+  },
+  "sleep_sit": {
+    "prediction_sha256": "afed14a8278919db2d212a97d80129607bcd1e15a163fd3127e6437f3dafac0d",
+    "labels_sha256": "28431620221203ded4b12e8e08954a8606d9dce06a1ac0c1b775a6cc1854179b"
+  },
+  "sleeping_turn_aruond": {
+    "prediction_sha256": "0197bcde30258dd9635db1ccfc3a55e8eef02811a2eb2eecfb5ef9561714434e",
+    "labels_sha256": "eea867fef9abee1487f4ac1b6c3432a3ff95ae6ae9cec0d963d17521ba801661"
+  },
+  "standing_bed": {
+    "prediction_sha256": "a60ecb9467630381920064874593ca6dbae679632db29c684ee94a65d12e3b28",
+    "labels_sha256": "c380a90b5a72197980af8951c5207db08ec884934c5bb767b1be6eb3b7ca1365"
+  },
+  "UV_camera": {
+    "prediction_sha256": "d809095bb3052677d57ab42bc7ece5cb59662724048b252b80b474da289616e4",
+    "labels_sha256": "f18275c81be79b77564ce28d6853c11ba8e6f185c79b02af154b208ca12858fd"
+  },
+  "walking": {
+    "prediction_sha256": "9b969b84283ea05dc12386088b4fab479306eaac0a64e0349d93a9cedb81e1eb",
+    "labels_sha256": "a5c32ac998673515e8e345d3a9c6eb6c9303732a1b4975de7e6caace3d0c0856"
+  }
+}

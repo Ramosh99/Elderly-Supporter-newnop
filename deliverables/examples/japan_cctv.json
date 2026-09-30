@@ -1,0 +1,82 @@
+{
+  "observation_duration_sec": 10.0,
+  "activity_duration_sec": {
+    "lying_in_bed": 0.75,
+    "sitting_on_bed": 3.125,
+    "sitting_outside_bed": 0.0,
+    "standing": 3.333,
+    "walking": 0.0,
+    "out_of_bed": 0.0,
+    "unknown": 2.792
+  },
+  "bed_exit_count": 1,
+  "bed_return_count": 1,
+  "total_in_bed_sec": 3.875,
+  "total_out_of_bed_sec": 3.333,
+  "total_unknown_sec": 2.792,
+  "longest_out_of_bed_period_sec": 3.333,
+  "final_state": "LYING_IN_BED",
+  "decision": "MONITOR",
+  "decision_reasons": [
+    "uncertain_or_missing_observations"
+  ],
+  "timeline": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 1.25,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 1.25,
+      "end_sec": 3.125,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.757
+    },
+    {
+      "start_sec": 3.125,
+      "end_sec": 4.667,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 4.667,
+      "end_sec": 8.0,
+      "state": "STANDING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 8.0,
+      "end_sec": 9.25,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.765
+    },
+    {
+      "start_sec": 9.25,
+      "end_sec": 10.0,
+      "state": "LYING_IN_BED",
+      "confidence": 0.8
+    }
+  ],
+  "events": [
+    {
+      "event": "bed_exit",
+      "start_time_sec": 4.666666666666667,
+      "confirmed_time_sec": 6.166666666666667,
+      "previous_state": "SITTING_ON_BED",
+      "current_state": "STANDING",
+      "confidence": 0.75,
+      "decision": "MONITOR"
+    },
+    {
+      "event": "return_to_bed",
+      "start_time_sec": 8.0,
+      "confirmed_time_sec": 9.5,
+      "previous_state": "STANDING",
+      "current_state": "LYING_IN_BED",
+      "confidence": 0.75,
+      "decision": "NORMAL"
+    }
+  ],
+  "video": "videos/japan_cctv.mp4"
+}

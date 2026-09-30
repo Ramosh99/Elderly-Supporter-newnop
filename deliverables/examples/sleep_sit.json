@@ -1,0 +1,69 @@
+{
+  "observation_duration_sec": 40.0,
+  "activity_duration_sec": {
+    "lying_in_bed": 26.292,
+    "sitting_on_bed": 12.792,
+    "sitting_outside_bed": 0.0,
+    "standing": 0.0,
+    "walking": 0.0,
+    "out_of_bed": 0.0,
+    "unknown": 0.917
+  },
+  "bed_exit_count": 0,
+  "bed_return_count": 0,
+  "total_in_bed_sec": 39.083,
+  "total_out_of_bed_sec": 0.0,
+  "total_unknown_sec": 0.917,
+  "longest_out_of_bed_period_sec": 0.0,
+  "final_state": "LYING_IN_BED",
+  "decision": "MONITOR",
+  "decision_reasons": [
+    "uncertain_or_missing_observations"
+  ],
+  "timeline": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 21.333,
+      "state": "LYING_IN_BED",
+      "confidence": 0.8
+    },
+    {
+      "start_sec": 21.333,
+      "end_sec": 21.75,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 21.75,
+      "end_sec": 26.125,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 26.125,
+      "end_sec": 26.625,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 26.625,
+      "end_sec": 30.25,
+      "state": "LYING_IN_BED",
+      "confidence": 0.8
+    },
+    {
+      "start_sec": 30.25,
+      "end_sec": 38.667,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.753
+    },
+    {
+      "start_sec": 38.667,
+      "end_sec": 40.0,
+      "state": "LYING_IN_BED",
+      "confidence": 0.8
+    }
+  ],
+  "events": [],
+  "video": "videos/sleep_sit.mp4"
+}

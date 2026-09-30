@@ -1,0 +1,51 @@
+{
+  "observation_duration_sec": 10.0,
+  "activity_duration_sec": {
+    "lying_in_bed": 1.667,
+    "sitting_on_bed": 4.333,
+    "sitting_outside_bed": 0.0,
+    "standing": 3.667,
+    "walking": 0.0,
+    "out_of_bed": 0.0,
+    "unknown": 0.333
+  },
+  "bed_exit_count": 0,
+  "bed_return_count": 0,
+  "total_in_bed_sec": 6.0,
+  "total_out_of_bed_sec": 3.667,
+  "total_unknown_sec": 0.333,
+  "longest_out_of_bed_period_sec": 3.667,
+  "final_state": "STANDING",
+  "decision": "MONITOR",
+  "decision_reasons": [
+    "uncertain_or_missing_observations"
+  ],
+  "timeline": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 1.667,
+      "state": "LYING_IN_BED",
+      "confidence": 0.45
+    },
+    {
+      "start_sec": 1.667,
+      "end_sec": 2.0,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 2.0,
+      "end_sec": 6.333,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.613
+    },
+    {
+      "start_sec": 6.333,
+      "end_sec": 10.0,
+      "state": "STANDING",
+      "confidence": 0.45
+    }
+  ],
+  "events": [],
+  "video": "videos/night_time.mp4"
+}

@@ -1,0 +1,57 @@
+{
+  "observation_duration_sec": 10.0,
+  "activity_duration_sec": {
+    "lying_in_bed": 0.0,
+    "sitting_on_bed": 0.0,
+    "sitting_outside_bed": 2.125,
+    "standing": 1.25,
+    "walking": 3.75,
+    "out_of_bed": 0.0,
+    "unknown": 2.875
+  },
+  "bed_exit_count": 0,
+  "bed_return_count": 0,
+  "total_in_bed_sec": 0.0,
+  "total_out_of_bed_sec": 7.125,
+  "total_unknown_sec": 2.875,
+  "longest_out_of_bed_period_sec": 7.125,
+  "final_state": "SITTING_OUTSIDE_BED",
+  "decision": "MONITOR",
+  "decision_reasons": [
+    "uncertain_or_missing_observations"
+  ],
+  "timeline": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 2.875,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 2.875,
+      "end_sec": 4.625,
+      "state": "WALKING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 4.625,
+      "end_sec": 5.875,
+      "state": "STANDING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 5.875,
+      "end_sec": 7.875,
+      "state": "WALKING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 7.875,
+      "end_sec": 10.0,
+      "state": "SITTING_OUTSIDE_BED",
+      "confidence": 0.75
+    }
+  ],
+  "events": [],
+  "video": "videos/chair_sitting.mp4"
+}

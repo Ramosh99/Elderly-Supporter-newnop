@@ -1,0 +1,124 @@
+{
+  "observation_duration_sec": 30.0,
+  "activity_duration_sec": {
+    "lying_in_bed": 2.667,
+    "sitting_on_bed": 17.167,
+    "sitting_outside_bed": 0.0,
+    "standing": 4.667,
+    "walking": 4.833,
+    "out_of_bed": 0.0,
+    "unknown": 0.667
+  },
+  "bed_exit_count": 2,
+  "bed_return_count": 2,
+  "total_in_bed_sec": 19.833,
+  "total_out_of_bed_sec": 9.5,
+  "total_unknown_sec": 0.667,
+  "longest_out_of_bed_period_sec": 6.333,
+  "final_state": "SITTING_ON_BED",
+  "decision": "MONITOR",
+  "decision_reasons": [
+    "uncertain_or_missing_observations"
+  ],
+  "timeline": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 2.5,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.767
+    },
+    {
+      "start_sec": 2.5,
+      "end_sec": 5.667,
+      "state": "STANDING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 5.667,
+      "end_sec": 15.667,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.76
+    },
+    {
+      "start_sec": 15.667,
+      "end_sec": 17.625,
+      "state": "WALKING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 17.625,
+      "end_sec": 19.125,
+      "state": "STANDING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 19.125,
+      "end_sec": 22.0,
+      "state": "WALKING",
+      "confidence": 0.75
+    },
+    {
+      "start_sec": 22.0,
+      "end_sec": 22.333,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 22.333,
+      "end_sec": 25.0,
+      "state": "LYING_IN_BED",
+      "confidence": 0.8
+    },
+    {
+      "start_sec": 25.0,
+      "end_sec": 25.333,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 25.333,
+      "end_sec": 30.0,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.75
+    }
+  ],
+  "events": [
+    {
+      "event": "bed_exit",
+      "start_time_sec": 2.5,
+      "confirmed_time_sec": 4.0,
+      "previous_state": "SITTING_ON_BED",
+      "current_state": "STANDING",
+      "confidence": 0.75,
+      "decision": "MONITOR"
+    },
+    {
+      "event": "return_to_bed",
+      "start_time_sec": 5.666666666666667,
+      "confirmed_time_sec": 7.166666666666667,
+      "previous_state": "STANDING",
+      "current_state": "SITTING_ON_BED",
+      "confidence": 0.8,
+      "decision": "NORMAL"
+    },
+    {
+      "event": "bed_exit",
+      "start_time_sec": 15.666666666666666,
+      "confirmed_time_sec": 17.166666666666664,
+      "previous_state": "SITTING_ON_BED",
+      "current_state": "WALKING",
+      "confidence": 0.75,
+      "decision": "MONITOR"
+    },
+    {
+      "event": "return_to_bed",
+      "start_time_sec": 22.333333333333332,
+      "confirmed_time_sec": 23.833333333333332,
+      "previous_state": "WALKING",
+      "current_state": "LYING_IN_BED",
+      "confidence": 0.8,
+      "decision": "NORMAL"
+    }
+  ],
+  "video": "videos/granny.mp4"
+}

@@ -1,0 +1,62 @@
+{
+  "observation_duration_sec": 10.0,
+  "activity_duration_sec": {
+    "lying_in_bed": 1.5,
+    "sitting_on_bed": 4.0,
+    "sitting_outside_bed": 0.0,
+    "standing": 0.0,
+    "walking": 4.375,
+    "out_of_bed": 0.0,
+    "unknown": 0.125
+  },
+  "bed_exit_count": 1,
+  "bed_return_count": 0,
+  "total_in_bed_sec": 5.5,
+  "total_out_of_bed_sec": 4.375,
+  "total_unknown_sec": 0.125,
+  "longest_out_of_bed_period_sec": 4.375,
+  "final_state": "WALKING",
+  "decision": "MONITOR",
+  "decision_reasons": [
+    "uncertain_or_missing_observations",
+    "bed_exit_without_confirmed_return"
+  ],
+  "timeline": [
+    {
+      "start_sec": 0.0,
+      "end_sec": 1.5,
+      "state": "LYING_IN_BED",
+      "confidence": 0.8
+    },
+    {
+      "start_sec": 1.5,
+      "end_sec": 1.625,
+      "state": "UNKNOWN",
+      "confidence": 0.0
+    },
+    {
+      "start_sec": 1.625,
+      "end_sec": 5.625,
+      "state": "SITTING_ON_BED",
+      "confidence": 0.752
+    },
+    {
+      "start_sec": 5.625,
+      "end_sec": 10.0,
+      "state": "WALKING",
+      "confidence": 0.75
+    }
+  ],
+  "events": [
+    {
+      "event": "bed_exit",
+      "start_time_sec": 5.625,
+      "confirmed_time_sec": 7.125,
+      "previous_state": "SITTING_ON_BED",
+      "current_state": "WALKING",
+      "confidence": 0.75,
+      "decision": "MONITOR"
+    }
+  ],
+  "video": "videos/standing_bed.mp4"
+}

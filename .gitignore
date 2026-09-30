@@ -10,4 +10,4 @@ output/
 *.pt
 Ultralytics/
 tmp/
-/deliverables
+# /deliverables
