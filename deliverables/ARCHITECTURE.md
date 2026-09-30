@@ -2,29 +2,32 @@
 
 ```mermaid
 flowchart TD
-    A[Continuous recorded video] --> B[Timestamped sampling]
+    A[Continuous recorded video] --> B[Timestamped sampling at 3 FPS]
     B --> C[YOLO bed segmentation]
-    B --> D[YOLO pose and target tracking]
-    C --> E[Posture, spatial and motion evidence]
+    B --> D[YOLO pose + ByteTrack identity locking]
+    C --> E[Posture / spatial / motion evidence per frame]
     D --> E
-    E --> F[Bounded review planner]
-    F --> G[Denser context frames]
-    G --> H[Chronological pose reclassification]
-    H --> I[Optional Gemini image review]
-    I --> J[Bracketed corrections and acceptance checks]
-    H --> J
-    J --> K[Temporal state tracking]
-    K --> L[Bed exit and return confirmation]
-    K --> M[Activity timeline and durations]
-    L --> N[NORMAL / MONITOR / ALERT]
-    M --> O[Final JSON]
-    N --> O
-    E --> P[Candidate annotated MP4]
-    O --> Q[Evaluation against reviewed labels]
+    E --> F[Iterative review agent\nplan initial windows]
+    F --> G[Gather denser frames at 9 FPS]
+    G --> H[Assess finding\ntransition? uncertainty? context clear?]
+    H -->|transition or uncertainty detected| F
+    H --> I[Chronological pose reclassification]
+    I --> J[Optional Gemini VLM review\nup to 6 requests × 5 frames]
+    J --> K[Bracketed corrections + fragmentation guard]
+    I --> K
+    K --> L[Temporal state tracking\nhold periods + gap detection]
+    L --> M[Bed exit / return event state machine]
+    L --> N[Activity timeline and durations]
+    M --> O[NORMAL / MONITOR / ALERT decision]
+    N --> P[Final JSON output]
+    O --> P
+    E --> Q[Candidate annotated MP4\nfirst-pass states only]
+    P --> R[Evaluation against reviewed ground-truth labels]
 ```
 
-The planner decides when to gather evidence through rules and budgets. Gemini is a
-visual reviewer, not an unrestricted controller. Bed and pose networks are pretrained;
-no new neural model is trained. Image-space geometry and temporal rules convert their
-outputs to activities. Offline analysis can use earlier and later frames; streaming
-would require buffering and delayed confirmation.
+The review agent uses an iterative reasoning loop: findings from each dense-sampling
+window (transition detected, upright near bed, uncertainty remains) trigger backward
+or forward follow-up windows before committing. Gemini is a visual reviewer with strict
+acceptance gates, not an unrestricted controller. Bed and pose networks are pretrained;
+no new neural model is trained. Offline analysis can use earlier and later frames;
+streaming would require buffering and delayed confirmation.
