@@ -16,6 +16,16 @@ class ReviewAgentTests(unittest.TestCase):
         obs=[self.observation(t,State.LYING_IN_BED) for t in range(5)]
         self.assertEqual(ReviewAgent(self.config()).plan(obs,5),[])
 
+    def test_stable_upright_over_bed_is_reviewed_with_budget(self):
+        from dataclasses import replace
+        obs = [replace(self.observation(t,State.STANDING), bed_relation='inside') for t in range(10)]
+        windows = ReviewAgent(self.config(review_max_windows=2)).plan(obs,10)
+        self.assertEqual(len(windows),2)
+        self.assertEqual(windows[0]['reason'],'ambiguous_upright_over_bed')
+        self.assertLessEqual(windows[0]['end_sec'],windows[1]['start_sec'])
+        calibrated = [replace(o,support_evidence='feet_on_floor_region') for o in obs]
+        self.assertEqual(ReviewAgent(self.config()).plan(calibrated,10),[])
+
     def test_windows_bounded_and_nonoverlapping(self):
         obs=[self.observation(t) for t in range(30)]
         windows=ReviewAgent(self.config(review_max_windows=2)).plan(obs,30)

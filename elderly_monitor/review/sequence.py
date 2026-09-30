@@ -69,18 +69,33 @@ def apply_sequence_assessments(selected, assessments, minimum, context):
 
 
 def guard_fragmentation(context, changes, duration, config):
-    """Reject a proposal if deterministic smoothing creates more UNKNOWN time.
+    """Allow bounded transition uncertainty only if reviewed postures survive.
 
-    This is a non-degradation check, not a ground-truth accuracy guarantee.
+    This is a structural check, not a ground-truth accuracy guarantee.
     """
     kwargs = dict(hold_sec=config['state_hold_sec'],posture_hold_sec=config['posture_hold_sec'],
                   event_hold_sec=config['event_hold_sec'],context_gap_sec=config['context_gap_sec'],
                   min_confidence=config['min_state_confidence'],
                   max_sample_gap_sec=max(1.,1.5/config['sample_fps']))
     unknown = []
+    results = []
     for changed in (False,True):
         tracker = TemporalStateTracker(**kwargs)
         for o in context:
             tracker.update(changes.get(o.timestamp_sec,o) if changed else o)
-        unknown.append(tracker.finish(duration)['total_unknown_sec'])
-    return unknown[1] <= unknown[0] + .001, {'before_unknown_sec':unknown[0],'proposed_unknown_sec':unknown[1]}
+        result = tracker.finish(duration)
+        results.append(result)
+        unknown.append(result['total_unknown_sec'])
+    accepted = unknown[1] <= unknown[0] + .001
+    # Do not preserve a known-wrong transition merely to suppress UNKNOWN.
+    # Allow a bounded increase only when every corrected sample survives
+    # smoothing as the independently reviewed posture, for a sustained span.
+    supported = bool(changes) and all(
+        o.reason == 'gemini_sequence_posture' and o.bbox is not None and o.track_id is not None
+        and any(s['start_sec']-.001 <= t < s['end_sec'] and s['state'] == o.state.value
+                for s in results[1]['timeline']) for t,o in changes.items())
+    span = max(changes)-min(changes) if changes else 0
+    bounded = (supported and span >= config['posture_hold_sec']
+               and unknown[1]-unknown[0] <= config['state_hold_sec'])
+    return accepted or bounded, {'before_unknown_sec':unknown[0],'proposed_unknown_sec':unknown[1],
+                                'accepted_supported_transition':bool(not accepted and bounded)}

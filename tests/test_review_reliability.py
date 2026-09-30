@@ -85,6 +85,24 @@ class ReliabilityTests(unittest.TestCase):
         accepted,_=guard_fragmentation(context,changes,3,self.config())
         self.assertFalse(accepted)
 
+    def test_supported_posture_can_leave_short_uncertain_transition(self):
+        context = [self.obs(t,State.WALKING) for t in (0,.5,1,1.5,2,2.5)]
+        changes = {o.timestamp_sec:replace(o,state=State.SITTING_ON_BED,
+                    reason='gemini_sequence_posture') for o in context[:4]}
+        accepted,info = guard_fragmentation(context,changes,3,self.config())
+        self.assertTrue(accepted)
+        self.assertTrue(info['accepted_supported_transition'])
+        self.assertGreater(info['proposed_unknown_sec'],info['before_unknown_sec'])
+
+    def test_short_or_unidentified_correction_cannot_bypass_guard(self):
+        context = [self.obs(t,State.WALKING) for t in (0,.5,1,1.5,2,2.5)]
+        for changes in (
+            {1:replace(context[2],state=State.SITTING_ON_BED,reason='gemini_sequence_posture')},
+            {o.timestamp_sec:replace(o,state=State.SITTING_ON_BED,track_id=None,
+             reason='gemini_sequence_posture') for o in context[:4]},
+        ):
+            self.assertFalse(guard_fragmentation(context,changes,3,self.config())[0])
+
     def return_clip(self,reason='ambiguous_posture_or_hidden_legs',identity=1,gap=.4):
         tracker=TemporalStateTracker(max_sample_gap_sec=3)
         rows=[self.obs(0,State.STANDING),self.obs(2,State.SITTING_ON_BED),

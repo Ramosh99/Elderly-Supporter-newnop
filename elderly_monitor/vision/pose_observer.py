@@ -22,6 +22,8 @@ class PoseActivityObserver:
         self.last_state = State.UNKNOWN
         self.last_sitting_time = None
         self.motion_evidence = None
+        self.foreshortened_sitting_enabled = True
+        self.seated_since = None
 
     def observe(self, timestamp_sec, bbox, detector_confidence, keypoints=None, track_id=None):
         self.motion_evidence = None
@@ -34,6 +36,7 @@ class PoseActivityObserver:
             if state in {State.SITTING_ON_BED, State.SITTING_OUTSIDE_BED}:
                 self.last_sitting_time = timestamp_sec
             if state == State.UNKNOWN:
+                self.seated_since = None
                 self.previous = None
                 self.motion_history.clear()
                 self.last_sitting_time = None
@@ -62,6 +65,7 @@ class PoseActivityObserver:
             self.motion_history.clear()
             self.last_state = State.UNKNOWN
             self.last_sitting_time = None
+            self.seated_since = None
         speed = 0.0
         if self.previous and self.previous[2] == track_id:
             elapsed = timestamp_sec - self.previous[0]
@@ -78,17 +82,24 @@ class PoseActivityObserver:
         relation = "inside" if on_bed else "near" if distance_to_polygon(hips, region) <= margin else "away"
         torso_angle = math.degrees(math.atan2(abs(shoulders[0]-hips[0]), abs(shoulders[1]-hips[1])))
         if torso_angle >= 55:
+            self.seated_since = None
             if relation == "near":
                 return output(State.UNKNOWN, 0.0, "uncertain_bed_boundary", speed)
             state = State.LYING_IN_BED if on_bed and overlap >= 0.25 else State.OUT_OF_BED
             return output(state, min(detector_confidence, 0.8), "horizontal_torso", speed)
 
         angles = []
+        short_thighs = []
         seated_thighs = []
         for h, k, a in ((11, 13, 15), (12, 14, 16)):
             hip, knee, ankle = joint(h), joint(k), joint(a)
             if hip is None or knee is None or ankle is None:
                 continue
+            thigh_height = knee[1] - hip[1]
+            shin_height = ankle[1] - knee[1]
+            short_thighs.append(shin_height > scale * 0.4
+                                and 0 < thigh_height < shin_height * 0.65
+                                and abs(ankle[0] - knee[0]) < shin_height * 0.35)
             # Extended knees do not imply standing: inspect thigh direction
             # relative to the torso, with both legs supported by bed geometry.
             shoulder = joint(5 if h == 11 else 6)
@@ -108,6 +119,23 @@ class PoseActivityObserver:
                 angles.append(math.degrees(math.acos(max(-1, min(1, (u[0]*v[0]+u[1]*v[1])/norm)))))
         if not angles or torso_angle > 40:
             return output(State.UNKNOWN, 0.0, "ambiguous_posture_or_hidden_legs", speed)
+        # A frontal seated thigh is foreshortened in 2D. Require bilateral
+        # evidence, bent knees, bed context and persistence; ratio alone also
+        # occurs during steps and with unusual body proportions.
+        left, right = joint(5), joint(6)
+        frontal = left is not None and right is not None and abs(left[0]-right[0]) > scale * 0.45
+        compact = (self.foreshortened_sitting_enabled and on_bed and frontal
+                   and len(short_thighs) == 2 and all(short_thighs)
+                   and len(angles) == 2 and max(angles) < 170)
+        if not compact:
+            self.seated_since = None
+        elif self.seated_since is None:
+            self.seated_since = timestamp_sec
+        if compact and timestamp_sec - self.seated_since >= 0.5:
+            motion, _ = self._upright_motion(timestamp_sec)
+            if motion != State.WALKING and self.motion_evidence.get('hip_torso_lengths_per_sec', 1) < 0.2:
+                return output(State.SITTING_ON_BED, min(detector_confidence, 0.75),
+                              "persistent_foreshortened_thighs", speed)
         if on_bed and len(seated_thighs) == 2 and all(seated_thighs):
             return output(State.SITTING_ON_BED, min(detector_confidence, 0.75),
                           "upright_flexed_hips_legs_over_bed", speed)

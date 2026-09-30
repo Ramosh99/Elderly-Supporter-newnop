@@ -46,6 +46,11 @@ class ReviewAgent:
                 reason = 'possible_bed_transition'
             elif i and o.state != observations[i-1].state:
                 reason = 'activity_transition'
+            elif (o.state in {State.STANDING, State.WALKING} and o.bed_relation == 'inside'
+                  and o.support_evidence == 'uncalibrated'):
+                # A stable label can still be wrong: whole-bed projection does
+                # not distinguish standing in front of a bed from sitting on it.
+                reason = 'ambiguous_upright_over_bed'
             if reason:
                 requests.append((o.timestamp_sec, reason))
         windows = []

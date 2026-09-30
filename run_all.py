@@ -172,6 +172,8 @@ def write_report(pipeline_results: dict, metrics: dict) -> None:
         "",
         "## Per-Clip Summary",
         "",
+        "> **Video versus final results:** Annotated MP4 files show first-pass candidate states. They do not include later dense-context reclassification, accepted Gemini corrections or final temporal smoothing. The metrics, timelines and events in this report use the final reviewed JSON. A second rendering pass from that timeline is still needed for a final-reviewed demonstration video.",
+        "",
         "| Clip | Decision | Exits | Returns | Unknown | Time-Acc | Known-Acc |",
         "|------|----------|-------|---------|---------|----------|-----------|",
     ]
