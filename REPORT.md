@@ -190,7 +190,101 @@ The system produces a temporal activity timeline from detected state transitions
 
 ---
 
-## 6. Evaluation Results
+## 6. Duration Estimation — Per-Clip Results
+
+Ground truth vs predicted duration for each activity state, with absolute error.
+
+### `sleeping_turn_aruond` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 10.0s | 10.0s | **0.0s** |
+
+### `sleep_sit` (40s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 27.0s | 26.3s | 0.7s |
+| SITTING_ON_BED | 13.0s | 12.8s | 0.2s |
+| UNKNOWN | 0.0s | 0.9s | 0.9s |
+
+### `standing_bed` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 1.6s | 1.5s | 0.1s |
+| SITTING_ON_BED | 4.0s | 4.0s | **0.0s** |
+| STANDING | 0.6s | 0.0s | 0.6s |
+| WALKING | 3.2s | 4.4s | 1.1s |
+| UNKNOWN | 0.5s | 0.1s | 0.4s |
+
+### `night_view` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 6.0s | 5.1s | 0.9s |
+| SITTING_ON_BED | 4.0s | 4.6s | 0.7s |
+| UNKNOWN | 0.0s | 0.2s | 0.2s |
+
+### `walking` (20s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| SITTING_OUTSIDE_BED | 3.4s | 4.1s | 0.7s |
+| STANDING | 1.2s | 1.0s | 0.2s |
+| WALKING | 14.9s | 12.0s | 2.9s |
+| UNKNOWN | 0.5s | 2.9s | 2.3s |
+
+### `night_time` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 1.7s | 1.7s | **0.0s** |
+| SITTING_ON_BED | 4.3s | 4.3s | **0.0s** |
+| STANDING | 2.0s | 3.7s | 1.7s |
+| WALKING | 2.0s | 0.0s | 2.0s |
+| UNKNOWN | 0.0s | 0.3s | 0.3s |
+
+*Note: WALKING misclassified as STANDING — low-light prevents ankle motion detection; Gemini sees the person upright but cannot measure displacement.*
+
+### `japan_cctv` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 2.1s | 0.8s | 1.4s |
+| SITTING_ON_BED | 3.0s | 3.1s | 0.1s |
+| STANDING | 4.9s | 3.3s | 1.5s |
+| UNKNOWN | 0.0s | 2.8s | 2.8s |
+
+*Note: UNKNOWN caused by caregiver overlap during lying→sitting transition.*
+
+### `granny` (30s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 3.2s | 2.7s | 0.5s |
+| SITTING_ON_BED | 24.0s | 17.2s | 6.8s |
+| STANDING | 0.0s | 4.7s | 4.7s |
+| WALKING | 2.8s | 4.8s | 2.0s |
+
+*Note: SITTING_ON_BED → STANDING confusion during bed-side manoeuvres.*
+
+### `chair_sitting` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| SITTING_OUTSIDE_BED | 2.8s | 2.1s | 0.6s |
+| STANDING | 2.8s | 1.2s | 1.6s |
+| WALKING | 4.4s | 3.8s | 0.7s |
+| UNKNOWN | 0.0s | 2.9s | 2.9s |
+
+*Note: UNKNOWN at start due to cold-start (no in-bed baseline).*
+
+### `UV_camera` (10s)
+| State | GT | Predicted | Error |
+|---|---|---|---|
+| LYING_IN_BED | 2.9s | 1.1s | 1.7s |
+| SITTING_ON_BED | 0.0s | 1.6s | 1.6s |
+| STANDING | 4.4s | 4.5s | 0.1s |
+| WALKING | 2.8s | 0.0s | 2.8s |
+| UNKNOWN | 0.0s | 2.2s | 2.2s |
+
+*Note: WALKING undetected — UV/IR footage prevents reliable ankle keypoint tracking.*
+
+---
+
+## 7. Accuracy and Event Detection Results
 
 Evaluated on 10 human-labelled video clips with Gemini VLM and agentic review enabled.
 
@@ -209,6 +303,35 @@ Evaluated on 10 human-labelled video clips with Gemini VLM and agentic review en
 
 **Overall average accuracy: 77.8%**
 
+### Per-Clip Bed Events
+
+| Clip | Exit TP | Exit FP | Exit FN | Exit P | Exit R | Return TP | Return FP | Return FN | Return P | Return R |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `sleeping_turn_aruond` | 0 | 0 | 0 | — | — | 0 | 0 | 0 | — | — |
+| `sleep_sit` | 0 | 0 | 0 | — | — | 0 | 0 | 0 | — | — |
+| `night_view` | 0 | 0 | 0 | — | — | 0 | 0 | 0 | — | — |
+| `standing_bed` | 1 | 0 | 0 | **100%** | **100%** | 0 | 0 | 0 | — | — |
+| `walking` | 0 | 0 | 1 | — | 0% | 0 | 0 | 0 | — | — |
+| `night_time` | 0 | 0 | 1 | — | 0% | 0 | 0 | 0 | — | — |
+| `japan_cctv` | 0 | 1 | 1 | 0% | 0% | 1 | 0 | 0 | **100%** | **100%** |
+| `granny` | 0 | 2 | 1 | 0% | 0% | 0 | 2 | 1 | 0% | 0% |
+| `chair_sitting` | 0 | 0 | 0 | — | — | 0 | 0 | 0 | — | — |
+| `UV_camera` | 0 | 0 | 0 | — | — | 0 | 1 | 1 | 0% | 0% |
+| **Total** | **1** | **3** | **4** | **25%** | **20%** | **1** | **3** | **2** | **25%** | **33%** |
+
+### Confusion Between Similar States
+
+The most common confusions across all clips (from `deliverables/evaluation_metrics.json`):
+
+| Ground Truth | Predicted As | Total (s) | Cause |
+|---|---|---|---|
+| SITTING_ON_BED | STANDING | 3.2s | Upright torso while still in bed — posture heuristics can't resolve without mattress contact |
+| SITTING_ON_BED | WALKING | 2.7s | Shifting / repositioning on bed resembles locomotion |
+| WALKING | STANDING | 4.4s | Low-light prevents ankle displacement; upright pose classified as static |
+| LYING_IN_BED | WALKING | 0.8s | Turning in bed produces brief limb velocity, triggers motion gate |
+| WALKING | SITTING_OUTSIDE_BED | 0.7s | Mid-step posture classified as chair-sitting when legs are hidden |
+| STANDING | WALKING | 0.6s | Standing with slight sway exceeds motion threshold |
+
 ### VLM Contribution
 
 | Clip | Without VLM | With VLM | Improvement |
@@ -221,7 +344,7 @@ Evaluated on 10 human-labelled video clips with Gemini VLM and agentic review en
 
 ---
 
-## 7. Failure Analysis
+## 8. Failure Analysis
 
 ### `chair_sitting` — 59.0%
 

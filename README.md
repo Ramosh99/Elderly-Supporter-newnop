@@ -87,6 +87,5 @@ timeline. Present them alongside final JSON; candidate overlays are not final re
 | `evaluation/evaluate.py` | Accuracy, confusion, duration and event metrics |
 | `tests/` | 109 passing unit tests at wrap-up |
 
-Controlled experiments: [thigh ratio](evaluation/thigh_ratio_findings.md) and
-[transition review](evaluation/transition_review_findings.md). Their isolated replay
-scores must not be substituted for full-run results.
+Full per-clip confusion matrices, duration errors and event metrics are in
+`deliverables/evaluation_metrics.json`.
