@@ -7,12 +7,12 @@ from pathlib import Path
 
 DEFAULTS = {
     "gemini_enabled": False, "gemini_model": "gemini-3.1-flash-lite",
-    "gemini_max_requests": 3, "gemini_frames_per_request": 5,
+    "gemini_max_requests": 6, "gemini_frames_per_request": 5,
     "gemini_timeout_sec": 30.0, "gemini_min_confidence": 0.8,
     "gemini_max_retries": 2, "gemini_retry_backoff_sec": 1.0,
     "gemini_cache_dir": "output/gemini_cache", "gemini_correction_policy": "sequence",
     "review_enabled": True, "review_context_sec": 2.0,
-    "review_sample_fps": 9.0, "review_max_windows": 3,
+    "review_sample_fps": 9.0, "review_max_windows": 6,
     "review_max_frames": 120, "review_anchor_gap_sec": 1.0,
     "sample_fps": 3.0, "bed_region_mode": "manual",
     "refresh_bed_each_sample": False, "bed_model": "yolo11n-seg.pt",

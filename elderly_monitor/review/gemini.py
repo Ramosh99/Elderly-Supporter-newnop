@@ -155,10 +155,18 @@ def apply_assessments(selected, assessments, minimum, context=None, walking_spee
         state = State(item['state'])
         reason = 'advisory_only'
         identity_valid = bool(o.bbox is not None and o.track_id is not None and o.bed_polygon)
+        no_detection = (o.state == State.UNKNOWN and o.bed_polygon and o.bbox is None
+                        and o.reason in {'missing_person_detection', 'no_person_detected',
+                                         'tracked_target_missing', 'tracking_id_unavailable'})
         eligible = (o.state == State.UNKNOWN and o.reason == 'ambiguous_posture_or_hidden_legs' and identity_valid)
-        compatible = ((state in {State.LYING_IN_BED,State.SITTING_ON_BED} and o.bed_relation == 'inside')
-                      or (state in {State.SITTING_OUTSIDE_BED,State.OUT_OF_BED} and o.bed_relation == 'away')
-                      or (state in {State.STANDING,State.WALKING} and o.bed_relation in {'inside','near','away'}))
+        # For frames where YOLO found no person (low-light, IR, occlusion), allow Gemini
+        # to classify the scene directly but cap confidence low — no spatial grounding.
+        if not eligible and no_detection:
+            eligible = True
+            identity_valid = True  # relax: let spatial/motion checks proceed
+        compatible = ((state in {State.LYING_IN_BED,State.SITTING_ON_BED} and (o.bed_relation == 'inside' or no_detection))
+                      or (state in {State.SITTING_OUTSIDE_BED,State.OUT_OF_BED} and (o.bed_relation == 'away' or no_detection))
+                      or (state in {State.STANDING,State.WALKING} and (o.bed_relation in {'inside','near','away'} or no_detection)))
         support = []
         if o.state != State.UNKNOWN and o.state != state and identity_valid:
             # Both independent local evidence and a neighbouring VLM assessment must agree.
@@ -188,9 +196,12 @@ def apply_assessments(selected, assessments, minimum, context=None, walking_spee
         elif not item['target_clear'] or item['confidence'] < minimum:
             reason = 'rejected_uncertain_assessment'
         if eligible and compatible and item['target_clear'] and item['confidence'] >= minimum:
-            updates[o.timestamp_sec] = replace(o,state=state,confidence=min(item['confidence'],0.8),
+            # No-detection frames have no spatial grounding — cap confidence lower
+            conf_cap = 0.45 if no_detection else 0.8
+            updates[o.timestamp_sec] = replace(o,state=state,confidence=min(item['confidence'],conf_cap),
                                                reason='gemini_reviewed_posture')
-            reason = 'accepted_supported_correction' if o.state != State.UNKNOWN else 'accepted_posture_evidence'
+            reason = 'accepted_no_detection_scene_read' if no_detection else (
+                'accepted_supported_correction' if o.state != State.UNKNOWN else 'accepted_posture_evidence')
         decisions.append({'timestamp_sec':o.timestamp_sec,'original_state':o.state.value,
                           **item,'application':reason,'supporting_timestamps_sec':support})
     return updates, decisions
@@ -213,9 +224,11 @@ def review_with_gemini(video_path, observations, duration, config, client=None):
         fps = capture.get(cv2.CAP_PROP_FPS) or 30.0
         windows = ReviewAgent(config).plan(observations,duration)[:config['gemini_max_requests']]
         for window in windows:
+            _no_det_reasons = {'missing_person_detection','no_person_detected','tracked_target_missing','tracking_id_unavailable'}
             candidates = [o for o in observations if window['start_sec'] <= o.timestamp_sec < window['end_sec']
-                          and o.bbox is not None and o.track_id is not None and o.bed_polygon]
-            if len(candidates) < 2 or len({o.track_id for o in candidates}) != 1:
+                          and o.bed_polygon and (o.bbox is not None or o.reason in _no_det_reasons)]
+            track_ids = {o.track_id for o in candidates if o.track_id is not None}
+            if len(candidates) < 2 or len(track_ids) > 1:
                 continue
             count = min(config['gemini_frames_per_request'],len(candidates))
             indices = {round(i*(len(candidates)-1)/(count-1)) for i in range(count)}
@@ -234,8 +247,9 @@ def review_with_gemini(video_path, observations, duration, config, client=None):
                 cv2.polylines(frame,[np.array(o.bed_polygon,dtype=np.int32)],True,(255,160,0),2)
                 if o.mattress_polygon:
                     cv2.polylines(frame,[np.array(o.mattress_polygon,dtype=np.int32)],True,(255,0,255),2)
-                x,y,w,h = map(int,o.bbox)
-                cv2.rectangle(frame,(x,y),(x+w,y+h),(0,220,0),2)
+                if o.bbox is not None:
+                    x,y,w,h = map(int,o.bbox)
+                    cv2.rectangle(frame,(x,y),(x+w,y+h),(0,220,0),2)
                 scale = min(1.0,768/max(frame.shape[:2]))
                 frame = cv2.resize(frame,(round(frame.shape[1]*scale),round(frame.shape[0]*scale)))
                 ok, jpeg = cv2.imencode('.jpg',frame,[cv2.IMWRITE_JPEG_QUALITY,80])

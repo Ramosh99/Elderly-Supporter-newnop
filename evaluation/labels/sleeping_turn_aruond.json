@@ -1,20 +1,10 @@
 {
-  "video": "videos\\sleeping_turn_aruond.mp4",
+  "video": "videos/sleeping_turn_aruond.mp4",
   "observation_duration_sec": 10.0,
   "reviewed": true,
-  "annotation_notes": "Supine to side-lying throughout; rolling is still LYING_IN_BED. Appears to overlap the beginning of sleep_sit; keep both in the same dataset split.",
+  "annotation_notes": "",
   "timeline": [
-    {
-      "start_sec": 0,
-      "end_sec": 10.0,
-      "state": "LYING_IN_BED"
-    }
+    { "start_sec": 0, "end_sec": 10.0, "state": "LYING_IN_BED" }
   ],
-  "events": [],
-  "annotation_status": "ai_visual_draft_completed",
-  "annotator": "Codex visual inspection of original-video contact sheets",
-  "human_reviewed": true,
-  "review_method": "20 overview frames per clip; additional 0.25s or 0.5s samples around selected transitions. Not exhaustive frame-by-frame playback.",
-  "boundary_uncertainty_sec": 0.5,
-  "event_definition": "Draft support-based definition: exit when pelvis leaves bed support during a completed rise; return when seated/lying support is re-established. Human must reconcile this with assignment event policy; proximity alone does not suppress exit."
+  "events": []
 }

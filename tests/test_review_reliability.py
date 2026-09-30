@@ -60,11 +60,19 @@ class ReliabilityTests(unittest.TestCase):
         self.assertEqual(set(changes),{0,.5,1})
 
     def test_motion_and_visibility_not_overwritten(self):
-        for middle in [self.obs(.5,State.WALKING),replace(self.obs(.5),state=State.UNKNOWN,reason='missing_person_detection'),
-                       replace(self.obs(.5),track_id=2)]:
+        # WALKING and identity mismatch must still be blocked
+        for middle in [self.obs(.5,State.WALKING), replace(self.obs(.5),track_id=2)]:
             context=[self.obs(0),middle,self.obs(1)]
             changes,_,_=apply_sequence_assessments([context[0],context[-1]],self.assessments('STANDING'),.8,context)
             self.assertFalse(changes)
+
+    def test_no_detection_frames_eligible_for_vlm(self):
+        # missing_person_detection UNKNOWN frames may now be classified by Gemini
+        # (low confidence, no spatial grounding) — this is intentional for low-light/IR clips
+        middle = replace(self.obs(.5), state=State.UNKNOWN, reason='missing_person_detection', bbox=None)
+        context = [self.obs(0), middle, self.obs(1)]
+        changes,_,_ = apply_sequence_assessments([context[0],context[-1]], self.assessments('STANDING'), .8, context)
+        self.assertTrue(changes)
 
     def test_single_assessment_cannot_fragment_timeline(self):
         o=self.obs(0)

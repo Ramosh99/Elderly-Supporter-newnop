@@ -1,0 +1,18 @@
+{
+  "video": "videos/granny.mp4",
+  "observation_duration_sec": 30.0,
+  "reviewed": true,
+  "annotation_notes": "",
+  "timeline": [
+    { "start_sec": 0.000,     "end_sec": 16.725, "state": "SITTING_ON_BED" },
+    { "start_sec": 16.725, "end_sec": 17.035, "state": "SITTING_ON_BED" },
+    { "start_sec": 17.035, "end_sec": 19.867, "state": "WALKING" },
+    { "start_sec": 19.867, "end_sec": 21.185, "state": "SITTING_ON_BED" },
+    { "start_sec": 21.185, "end_sec": 24.399,  "state": "LYING_IN_BED" },
+    { "start_sec": 24.399, "end_sec": 30.00,  "state": "SITTING_ON_BED" }
+  ],
+  "events": [
+    { "event": "bed_exit",      "start_time_sec": 17.275 },
+    { "event": "return_to_bed", "start_time_sec": 20.625 }
+  ]
+}

@@ -13,9 +13,11 @@ def apply_sequence_assessments(selected, assessments, minimum, context):
     applications = {a['index']:'advisory_no_agreeing_bracket' for a in ordered}
     for left,right in zip(ordered,ordered[1:]):
         a,b = selected[left['index']],selected[right['index']]
+        _no_det_r = {'missing_person_detection','no_person_detected','tracked_target_missing','tracking_id_unavailable'}
+        both_no_detection = a.bbox is None and b.bbox is None and a.reason in _no_det_r and b.reason in _no_det_r
         if (left['state'] != right['state'] or not left['target_clear'] or not right['target_clear']
                 or min(left['confidence'],right['confidence']) < minimum
-                or a.track_id is None or a.track_id != b.track_id
+                or (not both_no_detection and (a.track_id is None or a.track_id != b.track_id))
                 or not 0 < b.timestamp_sec-a.timestamp_sec <= 1.5):
             continue
         state = State(left['state'])
@@ -27,12 +29,16 @@ def apply_sequence_assessments(selected, assessments, minimum, context):
                 or between[-1].timestamp_sec != b.timestamp_sec
                 or any(y.timestamp_sec-x.timestamp_sec > 1.0 for x,y in zip(between,between[1:]))):
             rejection = 'rejected_evidence_gap'
+        _no_det_reasons = {'missing_person_detection','no_person_detected','tracked_target_missing','tracking_id_unavailable'}
+        all_no_detection = all(o.bbox is None and o.reason in _no_det_reasons for o in between)
         for o in between:
-            if o.track_id != a.track_id or not o.bbox or not o.bed_polygon:
+            if o.track_id != a.track_id or not o.bed_polygon:
                 rejection = 'rejected_identity_or_geometry_gap'
-            elif o.state == State.UNKNOWN and o.reason != 'ambiguous_posture_or_hidden_legs':
+            elif not o.bbox and o.reason not in _no_det_reasons:
+                rejection = 'rejected_identity_or_geometry_gap'
+            elif o.state == State.UNKNOWN and o.reason not in _no_det_reasons and o.reason != 'ambiguous_posture_or_hidden_legs':
                 rejection = 'rejected_visibility_gap'
-            elif ((state in {State.LYING_IN_BED,State.SITTING_ON_BED} and o.bed_relation != 'inside')
+            elif not all_no_detection and ((state in {State.LYING_IN_BED,State.SITTING_ON_BED} and o.bed_relation != 'inside')
                   or (state in {State.SITTING_OUTSIDE_BED,State.OUT_OF_BED} and o.bed_relation != 'away')
                   or (state in {State.STANDING,State.WALKING} and o.bed_relation not in {'inside','near','away'})):
                 rejection = 'rejected_spatial_conflict'
@@ -48,8 +54,9 @@ def apply_sequence_assessments(selected, assessments, minimum, context):
         changed = []
         for o in between:
             if o.state != state:
+                conf_cap = 0.45 if (o.bbox is None and o.reason in _no_det_reasons) else 0.8
                 updates[o.timestamp_sec] = replace(o,state=state,
-                    confidence=min(.8,left['confidence'],right['confidence']),reason='gemini_sequence_posture')
+                    confidence=min(conf_cap,left['confidence'],right['confidence']),reason='gemini_sequence_posture')
                 changed.append(o.timestamp_sec)
         for item in (left,right):
             applications[item['index']] = 'accepted_bracketed_sequence' if changed else 'agrees_with_sequence'

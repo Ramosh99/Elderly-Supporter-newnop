@@ -62,7 +62,27 @@ class ReviewAgent:
             if end > start:
                 windows.append(dict(start_sec=start, end_sec=end, trigger_sec=timestamp,
                                     reason=reason, action='inspect_additional_frames'))
-        return windows
+
+        # Second pass: tile any remaining UNKNOWN stretches not yet covered.
+        # This handles low-light / IR clips where YOLO produces a long UNKNOWN block
+        # that only gets one window at its start from the first pass.
+        covered = lambda t: any(w['start_sec'] <= t < w['end_sec'] for w in windows)
+        for o in observations:
+            if o.state != State.UNKNOWN:
+                continue
+            if covered(o.timestamp_sec):
+                continue
+            if len(windows) >= self.config['review_max_windows']:
+                break
+            start = max(0.0, o.timestamp_sec - context)
+            if windows:
+                start = max(start, windows[-1]['end_sec'])
+            end = min(duration, o.timestamp_sec + context)
+            if end > start:
+                windows.append(dict(start_sec=start, end_sec=end, trigger_sec=o.timestamp_sec,
+                                    reason='uncovered_unknown_block', action='inspect_additional_frames'))
+
+        return sorted(windows, key=lambda w: w['start_sec'])
 
     def run(self, observations, duration, gather):
         merged = {round(o.timestamp_sec, 9): o for o in observations}
